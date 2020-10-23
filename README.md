@@ -1,4 +1,4 @@
-# rigl-pytorch
+# rigl-torch
 
 An open source implementation of Google Research's paper [Rigging the Lottery: Making All Tickets Winners (RigL)](https://github.com/google-research/rigl) in PyTorch as versatile, simple, and fast as possible.
 
