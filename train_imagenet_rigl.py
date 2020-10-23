@@ -31,6 +31,7 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 default_data_dir = os.environ.get('SM_CHANNEL_TRAINING', None)
 parser.add_argument('--data', metavar='DIR', default=default_data_dir,
                     help='path to dataset')
+parser.add_argument('--run-extract-script', default=0, type=int, help='if 1, run the extract.sh file (used for sagemaker example + s3 bucket containing 1000 .tar files.')
 parser.add_argument('--output-dir', default=None)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
@@ -100,12 +101,13 @@ best_acc1 = 0
 def main():
     args = parser.parse_args()
     
-    """
-    First, extract the ImageNet tars.
-    """
-    print('running data extract script... path: %s' % args.data)
-    os.system('sh extract.sh %s' % args.data)
-    print('finished running data extract script!')
+    if args.run_extract_script:
+        """
+        First, extract the ImageNet tars.
+        """
+        print('running data extract script... path: %s' % args.data)
+        os.system('sh extract.sh %s' % args.data)
+        print('finished running data extract script!')
 
     if args.seed is not None:
         random.seed(args.seed)
