@@ -35,8 +35,8 @@ T_end = int(0.75 * total_iterations)
 pruner = RigLScheduler(model,                  # model you created
                        dense_allocation=0.1,   # a float between 0 and 1 that designates how sparse you want the network to be (0.1 dense_allocation = 90% sparse)
                        T_end=T_end,            # T_end hyperparam within the paper (recommended = 75% * total_iterations)
-                       delta=args.delta,       # delta hyperparam within the paper (recommended = 100)
-                       alpha=args.alpha,       # alpha hyperparam within the paper (recommended = 0.3)
+                       delta=100,              # delta hyperparam within the paper (recommended = 100)
+                       alpha=0.3,              # alpha hyperparam within the paper (recommended = 0.3)
                        static_topo=False)      # if True, the topology will be frozen, in other words RigL will not do it's job (for debugging)
                        
 ... more code ...
