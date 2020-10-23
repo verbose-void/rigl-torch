@@ -7,7 +7,9 @@ An open source implementation of Google Research's paper [Rigging the Lottery: M
 - Additionally, it is also implemented in [vanilla python](https://evcu.github.io/ml/sparse-micrograd/) and [graphcore](https://github.com/graphcore/examples/tree/master/applications/tensorflow/dynamic_sparsity/mnist_rigl).
 
 ## Usage:
-- You can use the pruning power of RigL by adding 3 lines of code to **your already existing training script**!
+- I have provided an imagenet training script that was slightly modified to add RigL's functionality. It adds a few parser statements, and only 3 required lines of RigL code usage to work! View the original training script [here](https://github.com/pytorch/examples/tree/master/imagenet) and the RigL version [here](https://github.com/McCrearyD/rigl-pytorch/blob/master/train_imagenet_rigl.py). :)
+
+- You can use the pruning power of RigL by adding 3 lines of code to **your already existing training script**! Here is how:
 
 ```python
 # first, create your model
