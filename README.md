@@ -28,7 +28,7 @@ optimizer = ...
 # RigL runs best when you allow RigL's topology modifications to run for 75% of the total training iterations (batches)
 # so, let's calculate T_end according to this
 epochs = 100
-total_iterations = len(datloader) * epochs
+total_iterations = len(dataloader) * epochs
 T_end = int(0.75 * total_iterations)
 
 # now, create the RigLScheduler object
