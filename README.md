@@ -52,4 +52,11 @@ for data in dataloader:
         # this block of code will execute according to the given hyperparameter schedule
         # in other words, optimizer.step() is not called after a RigL step
         optimizer.step()
+        
+# at any time you can print the RigLScheduler object and it will show you the sparsity distributions, number of training steps/rigl steps, etc!
+print(pruner)
+
+# save model
+torch.save(model)
 ```
+
