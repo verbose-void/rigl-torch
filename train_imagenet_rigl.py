@@ -275,7 +275,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.dense_allocation is not None:
         total_iterations = args.epochs * len(train_loader)
         T_end = int(0.75 * total_iterations) # (stop tweaking topology after 75% of training)
-        pruner = RigLScheduler(model, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo)
+        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo)
         print('pruning with dense allocation: %f & T_end=%i' % (args.dense_allocation, T_end))
         print(pruner)
 

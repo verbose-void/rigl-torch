@@ -17,7 +17,8 @@ max_iters = 50000
 
 model = torch.hub.load('pytorch/vision:v0.6.0', 'resnet50', pretrained=False).to(device)
 # model = torch.nn.DataParallel(model).to(device)
-scheduler = RigLScheduler(model, dense_allocation=0.1, T_end=int(max_iters * 0.75), delta=2)
+optimizer = torch.optim.SGD(model.parameters(), 0.1)
+scheduler = RigLScheduler(model, optimizer, dense_allocation=0.1, T_end=int(max_iters * 0.75), delta=2)
 
 print(scheduler)
 print('---------------------------------------')
@@ -34,9 +35,8 @@ dataloader = torch.utils.data.DataLoader(dataset, batch_size=2)#, num_workers=24
 
 # calculate gradients once (so we can do the tests without failure)
 criterion = torch.nn.CrossEntropyLoss()
-optimizer = torch.optim.SGD(model.parameters(), 0.1)
-model.train()
 
+model.train()
 for epoch in range(5):
     print('EPOCH [%i]' % epoch)
     for i, (X, T) in enumerate(dataloader):
