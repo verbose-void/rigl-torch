@@ -14,6 +14,8 @@ You only need to add ***3 lines of code*** to your PyTorch project to use RigL t
 - You can use the pruning power of RigL by adding 3 lines of code to **your already existing training script**! Here is how:
 
 ```python
+from rigl_torch.RigL import RigLScheduler
+
 # first, create your model
 model = ...
 
