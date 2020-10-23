@@ -9,7 +9,7 @@ An open source implementation of Google Research's paper [Rigging the Lottery: M
 ## Usage:
 - You can use the pruning power of RigL by adding 3 lines of code to **your already existing training script**!
 
-```
+```python
 # first, create your model
 model = ...
 
