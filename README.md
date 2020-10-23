@@ -17,7 +17,7 @@ You only need to add ***3 lines of code*** to your PyTorch project to use RigL t
 from rigl_torch.RigL import RigLScheduler
 
 # first, create your model
-model = ...
+model = ... # note: only tested on torch.hub's resnet networks (ie. resnet18 / resnet50)
 
 # create your dataset/dataloader
 dataset = ...
