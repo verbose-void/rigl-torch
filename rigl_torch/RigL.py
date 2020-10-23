@@ -63,7 +63,7 @@ class RigLScheduler:
 
         # scheduler keeps a log of how many times it's called. this is how it does its scheduling
         self.step = 0
-		self.rigl_steps = 0
+        self.rigl_steps = 0
 
         # define the actual schedule
         self.delta_T = delta
@@ -88,7 +88,7 @@ class RigLScheduler:
         self.step += 1
         if (self.step % self.delta_T) == 0 and self.step < self.T_end: # check schedule
             self._rigl_step()
-			self.rigl_steps += 1
+            self.rigl_steps += 1
             return False
         return True
 
@@ -119,7 +119,7 @@ class RigLScheduler:
         s += 'nonzero_percentages=' + S_str + ',\n'
         s += 'total_nonzero_params=' + ('%i/%i (%.2f%%)' % (total_nonzero, total_params, float(total_nonzero)/float(total_params)*100)) + ',\n'
         s += 'step=' + str(self.step) + ',\n'
-		s += 'num_rigl_steps=' + str(self.rigl_steps) + ',\n'
+        s += 'num_rigl_steps=' + str(self.rigl_steps) + ',\n'
 
         return s + ')'
 
@@ -146,7 +146,7 @@ class RigLScheduler:
             n_prune = int(n_ones * drop_fraction)
             n_keep = n_ones - n_prune
 
-			# create drop mask
+            # create drop mask
             _, sorted_indices = torch.topk(score_drop.view(-1), k=n_total)
             new_values = torch.where(
                             torch.arange(n_total, device=w.device) < n_keep,
@@ -163,7 +163,7 @@ class RigLScheduler:
                                 torch.ones_like(mask1) * (torch.min(score_grow) - 1),
                                 score_grow)
 
-			# create grow mask
+            # create grow mask
             _, sorted_indices = torch.topk(score_grow_lifted, k=n_total)
             new_values = torch.where(
                             torch.arange(n_total, device=w.device) < n_prune,
@@ -184,7 +184,7 @@ class RigLScheduler:
             else:
                 new_connections = ((mask2_reshaped == 1) & (current_mask == 0))
 
-			# update new weights to be initialized as zeros and update the weight tensors
+            # update new weights to be initialized as zeros and update the weight tensors
             new_weights = torch.where(new_connections.to(w.device), grow_tensor, w)
             w.data = new_weights
 
@@ -196,5 +196,5 @@ class RigLScheduler:
                 raise Exception('previous and new mask size mismatch. new=%i, old=%i' % \
                                  (torch.sum(mask_combined), torch.sum(current_mask)))
 
-			# update the mask
+            # update the mask
             current_mask.data = mask_combined
