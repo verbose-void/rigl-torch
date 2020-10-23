@@ -26,11 +26,12 @@ class IndexMaskHook:
 
 
 class RigLScheduler:
-    def __init__(self, model, dense_allocation=1, T_end=None, ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
+    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
 
         self.model = model
+        self.optimizer = optimizer
         self.W = get_W(model, ignore_linear_layers=ignore_linear_layers)
         self.backward_masks = None
         self.static_topo = static_topo
@@ -188,7 +189,15 @@ class RigLScheduler:
             new_weights = torch.where(new_connections.to(w.device), grow_tensor, w)
             w.data = new_weights
 
-            # momentum resetting not required for implementation in pytorch, since we force mask the gradients
+            # reset momentum
+            param_state = self.optimizer.state[w]
+            if 'momentum_buffer' not in param_state:
+                raise Exception()
+            else:
+                # set the new connection's momentum vars to be 0
+                buf = param_state['momentum_buffer']
+                new_values = torch.where(new_connections, torch.zeros_like(buf), buf)
+                buf.data = new_values
 
             mask_combined = torch.reshape(mask1 + mask2, current_mask.shape)
 
@@ -197,4 +206,4 @@ class RigLScheduler:
                                  (torch.sum(mask_combined), torch.sum(current_mask)))
 
             # update the mask
-            current_mask.data = mask_combined
+            current_mask.data = mask_combined.bool()
