@@ -23,7 +23,7 @@ model = ... # note: only tested on torch.hub's resnet networks (ie. resnet18 / r
 dataset = ...
 dataloader = ...
 
-# define your optimizer (ex. SGD)
+# define your optimizer (recommended SGD w/ momentum)
 optimizer = ...
 
 
@@ -35,6 +35,7 @@ T_end = int(0.75 * total_iterations)
 
 # now, create the RigLScheduler object
 pruner = RigLScheduler(model,                  # model you created
+                       optimizer,              # optimizer (recommended = SGD w/ momentum)
                        dense_allocation=0.1,   # a float between 0 and 1 that designates how sparse you want the network to be (0.1 dense_allocation = 90% sparse)
                        T_end=T_end,            # T_end hyperparam within the paper (recommended = 75% * total_iterations)
                        delta=100,              # delta hyperparam within the paper (recommended = 100)
