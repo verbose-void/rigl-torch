@@ -33,8 +33,12 @@ optimizer = ...
 # so, let's calculate T_end according to this
 epochs = 100
 total_iterations = len(dataloader) * epochs
-T_end = int(0.75 * total_iterations)
 
+# ------------------------------------ REQUIRED LINE # 1 ------------------------------------
+T_end = int(0.75 * total_iterations)
+# -------------------------------------------------------------------------------------------
+
+# ------------------------------------ REQUIRED LINE # 2 ------------------------------------
 # now, create the RigLScheduler object
 pruner = RigLScheduler(model,                  # model you created
                        optimizer,              # optimizer (recommended = SGD w/ momentum)
@@ -43,6 +47,7 @@ pruner = RigLScheduler(model,                  # model you created
                        delta=100,              # delta hyperparam within the paper (recommended = 100)
                        alpha=0.3,              # alpha hyperparam within the paper (recommended = 0.3)
                        static_topo=False)      # if True, the topology will be frozen, in other words RigL will not do it's job (for debugging)
+# -------------------------------------------------------------------------------------------
                        
 ... more code ...
 
@@ -51,7 +56,10 @@ for data in dataloader:
     ...
     
     # instead of calling optimizer.step(), wrap it as such:
+    
+# ------------------------------------ REQUIRED LINE # 3 ------------------------------------
     if pruner():
+# -------------------------------------------------------------------------------------------
         # this block of code will execute according to the given hyperparameter schedule
         # in other words, optimizer.step() is not called after a RigL step
         optimizer.step()
