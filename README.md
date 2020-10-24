@@ -1,5 +1,7 @@
 # rigl-torch
 
+## Warning: This repository is still in active development, results are not yet up to the rigl paper spec. Coming soon!
+
 An open source implementation of Google Research's paper [Rigging the Lottery: Making All Tickets Winners (RigL)](https://github.com/google-research/rigl) in PyTorch as versatile, simple, and fast as possible.
 
 You only need to add ***3 lines of code*** to your PyTorch project to use RigL to train your model with sparsity!
