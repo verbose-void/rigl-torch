@@ -37,7 +37,7 @@ def get_new_scheduler(static_topo=False):
     return scheduler
 
 
-def assert_actual_sparsity_is_valid(scheduler, exact_equal=True):
+def assert_actual_sparsity_is_valid(scheduler):
     for l, (W, target_S, N, mask) in enumerate(zip(scheduler.W, scheduler.S, scheduler.N, scheduler.backward_masks)):
         target_zeros = int(target_S * N)
         actual_zeros = torch.sum(W == 0).item()
@@ -48,13 +48,11 @@ def assert_actual_sparsity_is_valid(scheduler, exact_equal=True):
         print('mask_shape', mask.shape)
         print('w_shape', W.shape)
         print('sum_of_nonzeros', torch.sum(W[mask]).item())
-        print('sum_of_zeros', torch.sum(W[mask == 0]).item()) # sum_of_zeros should be 0
-        if exact_equal:
-            assert actual_zeros == target_zeros
-        else:
-            assert actual_zeros >= target_zeros
+        sum_of_zeros = torch.sum(W[mask == 0]).item()
+        assert sum_of_zeros == 0
 
-def assert_sparse_elements_are_zeros(static_topo):
+
+def assert_sparse_elements_remain_zeros(static_topo):
     scheduler = get_new_scheduler(static_topo)
     model = scheduler.model
     optimizer = scheduler.optimizer
@@ -72,16 +70,17 @@ def assert_sparse_elements_are_zeros(static_topo):
             optimizer.step()
 
         print('iteration: %i\trigl steps completed: %i\tis_rigl_step=%s' % (i, scheduler.rigl_steps, str(is_rigl_step)))
-        assert_actual_sparsity_is_valid(scheduler, exact_equal=False)
+        assert_actual_sparsity_is_valid(scheduler)
+
 
 class TestRigLScheduler:
     def test_initial_sparsity(self):
         scheduler = get_new_scheduler()
         assert_actual_sparsity_is_valid(scheduler)
 
-    def test_sparse_elements_are_zeros_STATIC_TOPO(self):
-        assert_sparse_elements_are_zeros(True)
+    def test_sparse_elements_remain_zeros_STATIC_TOPO(self):
+        assert_sparse_elements_remain_zeros(True)
 
-    def test_sparse_elements_are_zeros_RIGL_TOPO(self):
-        assert_sparse_elements_are_zeros(False)
+    def test_sparse_elements_remain_zeros_RIGL_TOPO(self):
+        assert_sparse_elements_remain_zeros(False)
     
