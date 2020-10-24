@@ -68,6 +68,6 @@ class TestRigLScheduler:
             if scheduler():
                 optimizer.step()
 
-            print('iteration %i' % i)
+            print('iteration: %i\trigl steps completed: %i' % (i, scheduler.rigl_steps))
             assert_actual_sparsity_is_valid(scheduler)
     
