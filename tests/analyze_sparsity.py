@@ -24,7 +24,7 @@ print(scheduler)
 print('---------------------------------------')
 
 dataset = datasets.ImageFolder(
-        args.data,
+        args.data_path,
         transforms.Compose([
             transforms.RandomResizedCrop(224),
             # transforms.RandomHorizontalFlip(),
