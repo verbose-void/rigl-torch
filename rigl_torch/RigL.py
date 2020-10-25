@@ -33,15 +33,21 @@ def _create_step_wrapper(scheduler, optimizer):
 
 class RigLScheduler:
 
-    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
+    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
 
         self.model = model
         self.optimizer = optimizer
-        self.W = get_W(model, ignore_linear_layers=ignore_linear_layers)
-        self.backward_masks = None
+        self.sparsity_distribution = sparsity_distribution
         self.static_topo = static_topo
+        self.backward_masks = None
+
+        assert self.sparsity_distribution in ('uniform', )
+
+        self.W = get_W(model, ignore_linear_layers=ignore_linear_layers)
+        # when using uniform sparsity, the first layer is always 100% dense
+        self.W = self.W[1:]
 
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
