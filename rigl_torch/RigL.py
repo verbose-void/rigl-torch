@@ -6,9 +6,6 @@ import torch
 from rigl_torch.util import get_W
 
 
-DEBUG = False
-
-
 class IndexMaskHook:
     def __init__(self, layer, scheduler):
         self.layer = layer
@@ -161,6 +158,12 @@ class RigLScheduler:
 
 
     @torch.no_grad()
+    def apply_mask_to_gradients(self):
+        for w, mask in zip(self.W, self.backward_masks):
+            w.grad *= mask
+
+
+    @torch.no_grad()
     def _rigl_step(self):
         if self.static_topo:
             return 
@@ -225,3 +228,4 @@ class RigLScheduler:
 
             self.reset_momentum()
             self.apply_mask_to_weights()
+            self.apply_mask_to_gradients() 
