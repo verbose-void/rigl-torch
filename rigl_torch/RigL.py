@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import torch.distributed as dist
 
 from rigl_torch.util import get_W
 
@@ -89,15 +90,21 @@ class RigLScheduler:
 
     @torch.no_grad()
     def random_sparsify(self):
+        is_dist = dist.is_initialized()
         self.backward_masks = []
         for l, w in enumerate(self.W):
             n = self.N[l]
             s = int(self.S[l] * n)
             perm = torch.randperm(n)
             perm = perm[:s]
-            flat_mask = torch.ones(n, dtype=torch.bool, device=w.device)
+            flat_mask = torch.ones(n, device=w.device)
             flat_mask[perm] = 0
             mask = torch.reshape(flat_mask, w.shape)
+
+            if is_dist:
+                dist.broadcast(mask, 0)
+
+            mask = mask.bool()
             w *= mask
             self.backward_masks.append(mask)
 
@@ -176,12 +183,24 @@ class RigLScheduler:
 
         drop_fraction = self.cosine_annealing()
 
+        # if distributed these values will be populated
+        is_dist = dist.is_initialized()
+        world_size = dist.get_world_size() if is_dist else None
+
         for l, w in enumerate(self.W):
             current_mask = self.backward_masks[l]
 
             # calculate raw scores
             score_drop = torch.abs(w)
             score_grow = torch.abs(self.backward_hook_objects[l].dense_grad)
+
+            # if is distributed, synchronize scores
+            if is_dist:
+                dist.all_reduce(score_drop)  # get the sum of all drop scores
+                score_drop /= world_size     # divide by world size (average the drop scores)
+
+                dist.all_reduce(score_grow)  # get the sum of all grow scores
+                score_grow /= world_size     # divide by world size (average the grow scores)
 
             # calculate drop/grow quantities
             n_total = self.N[l]
