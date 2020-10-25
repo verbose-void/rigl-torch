@@ -154,8 +154,9 @@ def main():
     pruner = lambda: True
     if args.dense_allocation is not None:
         T_end = int(0.75 * args.epochs * len(train_loader))
-        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, alpha=args.alpha, delta=args.delta, static_topo=args.static_topo, T_end=T_end)
+        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, alpha=args.alpha, delta=args.delta, static_topo=args.static_topo, T_end=T_end, ignore_linear_layers=False)
 
+    print(model)
     for epoch in range(1, args.epochs + 1):
         print(pruner)
         train(args, model, device, train_loader, optimizer, epoch, pruner=pruner)
