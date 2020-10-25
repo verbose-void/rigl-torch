@@ -19,8 +19,13 @@ You only need to add ***2 lines of code*** to your PyTorch project to use RigL t
 
 ## Usage:
 - Run the tests by doing `cd rigl-torch`, then `pytest`.
-- I have provided an imagenet training script that was slightly modified to add RigL's functionality. It adds a few parser statements, and only 2 required lines of RigL code usage to work! View the original training script [here](https://github.com/pytorch/examples/tree/master/imagenet) and the RigL version [here](https://github.com/McCrearyD/rigl-pytorch/blob/master/train_imagenet_rigl.py). :) You can run by calling `python train_imagenet_rigl.py [fill in arguments]`, or check out the **[sagemaker example notebook](https://github.com/McCrearyD/rigl-pytorch/blob/master/sagemaker/rigl.ipynb)** to handle everything for you! *Isn't that easy?!*
-- You can use the pruning power of RigL by adding 2 lines of code to **your already existing training script**! Here is how:
+
+- I have provided some examples of training scripts that were **slightly** modified to add RigL's functionality. It adds a few parser statements, and only 2 required lines of RigL code usage to work! See them with links to the originals here:
+    - `ImageNet` | [RigL](https://github.com/McCrearyD/rigl-pytorch/blob/master/train_imagenet_rigl.py) | [Original](https://github.com/pytorch/examples/blob/0f0c9131ca5c79d1332dce1f4c06fe942fbdc665/imagenet/main.py#L1) | [RigL + SageMaker](https://github.com/McCrearyD/rigl-pytorch/blob/master/sagemaker/rigl.ipynb)
+    - `MNIST` | [RigL](https://github.com/McCrearyD/rigl-pytorch/blob/master/train_mnist_rigl.py) | [Original](https://github.com/pytorch/examples/blob/0f0c9131ca5c79d1332dce1f4c06fe942fbdc665/mnist/main.py#L1)
+  
+- OR more impressively, **you can use the pruning power of RigL by adding 2 lines of code to your already existing training script**! Here is how:
+
 ```python
 from rigl_torch.RigL import RigLScheduler
 
