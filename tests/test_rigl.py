@@ -8,7 +8,7 @@ from rigl_torch.RigL import RigLScheduler
 
 
 # set up environment
-torch.manual_seed(1)
+# torch.manual_seed(1)
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 # hyperparameters
@@ -30,9 +30,11 @@ def get_dummy_dataloader():
     return dataloader
 
 
-def get_new_scheduler(static_topo=False):
+def get_new_scheduler(static_topo=False, use_ddp=False):
     model = torch.hub.load('pytorch/vision:v0.6.0', arch, pretrained=False).to(device)
-    if torch.cuda.is_available() and torch.cuda.device_count() > 1:
+    if use_ddp:
+        model = torch.nn.parallel.DistributedDataParallel(model)
+    elif torch.cuda.is_available() and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
     optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9)
     scheduler = RigLScheduler(model, optimizer, dense_allocation=dense_allocation, T_end=T_end, delta=delta, static_topo=static_topo)
@@ -41,26 +43,27 @@ def get_new_scheduler(static_topo=False):
     return scheduler
 
 
-def assert_actual_sparsity_is_valid(scheduler):
+def assert_actual_sparsity_is_valid(scheduler, verbose=False):
     for l, (W, target_S, N, mask) in enumerate(zip(scheduler.W, scheduler.S, scheduler.N, scheduler.backward_masks)):
         target_zeros = int(target_S * N)
         actual_zeros = torch.sum(W == 0).item()
-        print('----- layer %i ------' % l)
-        print('target_zeros', target_zeros)
-        print('actual_zeros', actual_zeros)
-        print('mask_sum', torch.sum(mask).item())
-        print('mask_shape', mask.shape)
-        print('w_shape', W.shape)
-        print('sum_of_nonzeros', torch.sum(W[mask]).item())
         sum_of_zeros = torch.sum(W[mask == 0]).item()
-        print('sum_of_zeros', sum_of_zeros)
-        print('num_of_zeros that are NOT actually zeros', torch.sum(W[mask == 0] != 0).item())
-        print('avg_of_zeros', torch.mean(W[mask == 0]).item())
+        if verbose:
+            print('----- layer %i ------' % l)
+            print('target_zeros', target_zeros)
+            print('actual_zeros', actual_zeros)
+            print('mask_sum', torch.sum(mask).item())
+            print('mask_shape', mask.shape)
+            print('w_shape', W.shape)
+            print('sum_of_nonzeros', torch.sum(W[mask]).item())
+            print('sum_of_zeros', sum_of_zeros)
+            print('num_of_zeros that are NOT actually zeros', torch.sum(W[mask == 0] != 0).item())
+            print('avg_of_zeros', torch.mean(W[mask == 0]).item())
         assert sum_of_zeros == 0
 
 
-def assert_sparse_elements_remain_zeros(static_topo):
-    scheduler = get_new_scheduler(static_topo)
+def assert_sparse_elements_remain_zeros(static_topo, use_ddp=False, verbose=False):
+    scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
     model = scheduler.model
     optimizer = scheduler.optimizer
     dataloader = get_dummy_dataloader()
@@ -76,12 +79,13 @@ def assert_sparse_elements_remain_zeros(static_topo):
             is_rigl_step = False
             optimizer.step()
 
-        print('iteration: %i\trigl steps completed: %i\tis_rigl_step=%s' % (i, scheduler.rigl_steps, str(is_rigl_step)))
-        assert_actual_sparsity_is_valid(scheduler)
+        if verbose:
+            print('iteration: %i\trigl steps completed: %i\tis_rigl_step=%s' % (i, scheduler.rigl_steps, str(is_rigl_step)))
+        assert_actual_sparsity_is_valid(scheduler, verbose=verbose)
 
 
-def assert_sparse_momentum_remain_zeros(static_topo):
-    scheduler = get_new_scheduler(static_topo)
+def assert_sparse_momentum_remain_zeros(static_topo, use_ddp=False):
+    scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
     model = scheduler.model
     optimizer = scheduler.optimizer
     dataloader = get_dummy_dataloader()
@@ -110,8 +114,8 @@ def assert_sparse_momentum_remain_zeros(static_topo):
             assert sum_zeros == 0
 
 
-def assert_sparse_gradients_remain_zeros(static_topo):
-    scheduler = get_new_scheduler(static_topo)
+def assert_sparse_gradients_remain_zeros(static_topo, use_ddp=False):
+    scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
     model = scheduler.model
     optimizer = scheduler.optimizer
     dataloader = get_dummy_dataloader()
@@ -143,7 +147,6 @@ class TestRigLScheduler:
         scheduler = get_new_scheduler()
         assert_actual_sparsity_is_valid(scheduler)
 
-    """
     def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
         assert_sparse_momentum_remain_zeros(True)
 
@@ -161,39 +164,53 @@ class TestRigLScheduler:
 
     def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
         assert_sparse_gradients_remain_zeros(False)
-    """
 
 
+# distributed testing setup
 BACKEND = 'gloo'  # mpi, gloo, or nccl
-RANK = 0
-WORLD_SIZE = 1
-# os.environ['RANK'] = str(RANK)
-# os.environ['WORLD_SIZE'] = str(WORLD_SIZE)
-# os.environ['MASTER_ADDR'] = 'localhost'
-# os.environ['MASTER_PORT'] = '39501'
-
-dist.init_process_group(BACKEND, init_method='file:///distributed_test', rank=RANK, world_size=WORLD_SIZE)
+WORLD_SIZE = 2
+init_method = 'file://%s/distributed_test' % os.getcwd()
 
 
-def pruner_worker(rank):
-    # scheduler = get_new_scheduler()
-    # assert_actual_sparsity_is_valid(scheduler)
-    # print('pruner worker %i' % rank)
+def assert_actual_sparsity_is_valid_DISTRIBUTED(rank, static_topo=False):
+    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    scheduler = get_new_scheduler(static_topo=static_topo, use_ddp=True)
+    assert_actual_sparsity_is_valid(scheduler)
 
-    x = torch.rand((2, 2))
-    print('original x for rank %i' % rank, x)
-    # dist.broadcast(x.data, 0)
-    # print('after broadcast x for rank %i' % rank, x)
 
-    """
-    for mask in scheduler.backward_masks:
-        print('broadcasting')
-        # print(dist.broadcast)
-        dist.broadcast(mask.data, 0)
-    """
+def assert_sparse_momentum_remain_zeros_DISTRIBUTED(rank, static_topo):
+    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    assert_sparse_momentum_remain_zeros(static_topo, use_ddp=True)
+
+
+def assert_sparse_elements_remain_zeros_DISTRIBUTED(rank, static_topo):
+    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    assert_sparse_elements_remain_zeros(static_topo, use_ddp=True)
+
+
+def assert_sparse_gradients_remain_zeros_DISTRIBUTED(rank, static_topo):
+    dist.init_process_group(BACKEND, init_method=init_method, rank=rank, world_size=WORLD_SIZE)
+    assert_sparse_gradients_remain_zeros(static_topo, use_ddp=True)
 
 
 class TestRigLSchedulerDistributed:
     def test_initial_sparsity(self):
-        # mp.spawn(pruner_worker, nprocs=2)
-        pass
+        mp.spawn(assert_actual_sparsity_is_valid_DISTRIBUTED, nprocs=WORLD_SIZE)
+
+    def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
+        mp.spawn(assert_sparse_momentum_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(True, ))
+
+    def test_sparse_momentum_remain_zeros_RIGL_TOPO(self):
+        mp.spawn(assert_sparse_momentum_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(False, ))
+
+    def test_sparse_elements_remain_zeros_STATIC_TOPO(self):
+        mp.spawn(assert_sparse_elements_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(True, ))
+
+    def test_sparse_elements_remain_zeros_RIGL_TOPO(self):
+        mp.spawn(assert_sparse_elements_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(False, ))
+
+    def test_sparse_gradients_remain_zeros_STATIC_TOPO(self):
+        mp.spawn(assert_sparse_gradients_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(True, ))
+
+    def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
+        mp.spawn(assert_sparse_gradients_remain_zeros_DISTRIBUTED, nprocs=WORLD_SIZE, args=(False, ))
