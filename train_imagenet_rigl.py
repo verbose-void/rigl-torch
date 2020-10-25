@@ -1,3 +1,12 @@
+"""
+
+
+Note: This is the exact same script as found here: https://github.com/pytorch/examples/blob/0f0c9131ca5c79d1332dce1f4c06fe942fbdc665/imagenet/main.py#L1
+The only difference is there are a few parser arguments added and the mandatory rigl-torch code (creating the prune scheduler).
+
+
+"""
+
 import argparse
 import os
 import random
