@@ -84,6 +84,7 @@ def assert_sparse_momentum_remain_zeros(static_topo):
 
     model.train()
     for i, (X, T) in enumerate(dataloader):
+        optimizer.zero_grad()
         Y = model(X.to(device))
         loss = criterion(Y, T.to(device))
         loss.backward()
@@ -105,6 +106,34 @@ def assert_sparse_momentum_remain_zeros(static_topo):
             assert sum_zeros == 0
 
 
+def assert_sparse_gradients_remain_zeros(static_topo):
+    scheduler = get_new_scheduler(static_topo)
+    model = scheduler.model
+    optimizer = scheduler.optimizer
+    dataloader = get_dummy_dataloader()
+
+    model.train()
+    for i, (X, T) in enumerate(dataloader):
+        optimizer.zero_grad()
+        Y = model(X.to(device))
+        loss = criterion(Y, T.to(device))
+        loss.backward()
+
+        is_rigl_step = True
+        if scheduler():
+            is_rigl_step = False
+            optimizer.step()
+
+        print('iteration: %i\trigl steps completed: %i\tis_rigl_step=%s' % (i, scheduler.rigl_steps, str(is_rigl_step)))
+        
+        # check gradients
+        for l, (w, mask) in enumerate(zip(scheduler.W, scheduler.backward_masks)):
+            grads = w.grad
+            sum_zeros = torch.sum(grads[mask == 0]).item()
+            print('layer %i' % l)
+            assert sum_zeros == 0
+
+
 class TestRigLScheduler:
     def test_initial_sparsity(self):
         scheduler = get_new_scheduler()
@@ -121,3 +150,9 @@ class TestRigLScheduler:
 
     def test_sparse_elements_remain_zeros_RIGL_TOPO(self):
         assert_sparse_elements_remain_zeros(False)
+
+    def test_sparse_gradients_remain_zeros_STATIC_TOPO(self):
+        assert_sparse_gradients_remain_zeros(True)
+
+    def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
+        assert_sparse_gradients_remain_zeros(False)
