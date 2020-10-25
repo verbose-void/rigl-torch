@@ -25,7 +25,17 @@ class IndexMaskHook:
         return grad * mask
 
 
+def _create_step_wrapper(scheduler, optimizer):
+    _unwrapped_step = optimizer.step
+    def _wrapped_step():
+        _unwrapped_step()
+        scheduler.reset_momentum()
+        scheduler.apply_mask_to_weights()
+    optimizer.step = _wrapped_step
+
+
 class RigLScheduler:
+
     def __init__(self, model, optimizer, dense_allocation=1, T_end=None, ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
@@ -35,6 +45,9 @@ class RigLScheduler:
         self.W = get_W(model, ignore_linear_layers=ignore_linear_layers)
         self.backward_masks = None
         self.static_topo = static_topo
+
+        # modify optimizer.step() function to call "reset_momentum" after
+        _create_step_wrapper(self, optimizer)
 
         # define sparsity allocation
         layers = len(self.W)
@@ -85,6 +98,7 @@ class RigLScheduler:
             w *= mask
             self.backward_masks.append(mask)
 
+
     def __call__(self):
         self.step += 1
         if (self.step % self.delta_T) == 0 and self.step < self.T_end: # check schedule
@@ -92,6 +106,7 @@ class RigLScheduler:
             self.rigl_steps += 1
             return False
         return True
+
 
     def __str__(self):
         s = 'RigLScheduler(\n'
@@ -124,8 +139,26 @@ class RigLScheduler:
 
         return s + ')'
 
+
     def cosine_annealing(self):
         return self.alpha / 2 * (1 + np.cos((self.step * np.pi) / self.T_end))
+
+
+    @torch.no_grad()
+    def reset_momentum(self):
+        for w, mask in zip(self.W, self.backward_masks):
+            param_state = self.optimizer.state[w]
+            if 'momentum_buffer' in param_state:
+                # mask the momentum matrix
+                buf = param_state['momentum_buffer']
+                buf *= mask
+
+
+    @torch.no_grad()
+    def apply_mask_to_weights(self):
+        for w, mask in zip(self.W, self.backward_masks):
+            w *= mask
+
 
     @torch.no_grad()
     def _rigl_step(self):
@@ -153,7 +186,7 @@ class RigLScheduler:
                             torch.arange(n_total, device=w.device) < n_keep,
                             torch.ones_like(sorted_indices),
                             torch.zeros_like(sorted_indices))
-            mask1 = new_values.scatter(-1, sorted_indices, new_values)
+            mask1 = new_values.scatter(0, sorted_indices, new_values)
 
             # flatten grow scores
             score_grow = score_grow.view(-1)
@@ -170,11 +203,7 @@ class RigLScheduler:
                             torch.arange(n_total, device=w.device) < n_prune,
                             torch.ones_like(sorted_indices),
                             torch.zeros_like(sorted_indices))
-            mask2 = new_values.scatter(-1, sorted_indices, new_values)
-
-            # Ensure masks are disjoint.
-            if DEBUG and torch.sum(mask1 * mask2) != 0:
-                raise Exception()
+            mask2 = new_values.scatter(0, sorted_indices, new_values)
 
             mask2_reshaped = torch.reshape(mask2, current_mask.shape)
             grow_tensor = torch.zeros_like(w)
@@ -189,21 +218,10 @@ class RigLScheduler:
             new_weights = torch.where(new_connections.to(w.device), grow_tensor, w)
             w.data = new_weights
 
-            # reset momentum
-            param_state = self.optimizer.state[w]
-            if 'momentum_buffer' not in param_state:
-                raise Exception()
-            else:
-                # set the new connection's momentum vars to be 0
-                buf = param_state['momentum_buffer']
-                new_values = torch.where(new_connections, torch.zeros_like(buf), buf)
-                buf.data = new_values
-
-            mask_combined = torch.reshape(mask1 + mask2, current_mask.shape)
-
-            if DEBUG and torch.sum(mask_combined) != torch.sum(current_mask):
-                raise Exception('previous and new mask size mismatch. new=%i, old=%i' % \
-                                 (torch.sum(mask_combined), torch.sum(current_mask)))
+            mask_combined = torch.reshape(mask1 + mask2, current_mask.shape).bool()
 
             # update the mask
-            current_mask.data = mask_combined.bool()
+            current_mask.data = mask_combined
+
+            self.reset_momentum()
+            self.apply_mask_to_weights()
