@@ -1,4 +1,8 @@
+import os
+
 import torch
+import torch.multiprocessing as mp
+import torch.distributed as dist
 
 from rigl_torch.RigL import RigLScheduler
 
@@ -139,6 +143,7 @@ class TestRigLScheduler:
         scheduler = get_new_scheduler()
         assert_actual_sparsity_is_valid(scheduler)
 
+    """
     def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
         assert_sparse_momentum_remain_zeros(True)
 
@@ -156,3 +161,39 @@ class TestRigLScheduler:
 
     def test_sparse_gradients_remain_zeros_RIGL_TOPO(self):
         assert_sparse_gradients_remain_zeros(False)
+    """
+
+
+BACKEND = 'gloo'  # mpi, gloo, or nccl
+RANK = 0
+WORLD_SIZE = 1
+# os.environ['RANK'] = str(RANK)
+# os.environ['WORLD_SIZE'] = str(WORLD_SIZE)
+# os.environ['MASTER_ADDR'] = 'localhost'
+# os.environ['MASTER_PORT'] = '39501'
+
+dist.init_process_group(BACKEND, init_method='file:///distributed_test', rank=RANK, world_size=WORLD_SIZE)
+
+
+def pruner_worker(rank):
+    # scheduler = get_new_scheduler()
+    # assert_actual_sparsity_is_valid(scheduler)
+    # print('pruner worker %i' % rank)
+
+    x = torch.rand((2, 2))
+    print('original x for rank %i' % rank, x)
+    # dist.broadcast(x.data, 0)
+    # print('after broadcast x for rank %i' % rank, x)
+
+    """
+    for mask in scheduler.backward_masks:
+        print('broadcasting')
+        # print(dist.broadcast)
+        dist.broadcast(mask.data, 0)
+    """
+
+
+class TestRigLSchedulerDistributed:
+    def test_initial_sparsity(self):
+        # mp.spawn(pruner_worker, nprocs=2)
+        pass
