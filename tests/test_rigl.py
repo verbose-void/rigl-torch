@@ -11,7 +11,7 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 arch = 'resnet50'
 image_dimensionality = (3, 224, 224)
 num_classes = 1000
-max_iters = 64
+max_iters = 6
 T_end = int(max_iters * 0.75)
 delta = 2
 dense_allocation = 0.1
@@ -49,6 +49,9 @@ def assert_actual_sparsity_is_valid(scheduler):
         print('w_shape', W.shape)
         print('sum_of_nonzeros', torch.sum(W[mask]).item())
         sum_of_zeros = torch.sum(W[mask == 0]).item()
+        print('sum_of_zeros', sum_of_zeros)
+        print('num_of_zeros that are NOT actually zeros', torch.sum(W[mask == 0] != 0).item())
+        print('avg_of_zeros', torch.mean(W[mask == 0]).item())
         assert sum_of_zeros == 0
 
 
@@ -73,14 +76,48 @@ def assert_sparse_elements_remain_zeros(static_topo):
         assert_actual_sparsity_is_valid(scheduler)
 
 
+def assert_sparse_momentum_remain_zeros(static_topo):
+    scheduler = get_new_scheduler(static_topo)
+    model = scheduler.model
+    optimizer = scheduler.optimizer
+    dataloader = get_dummy_dataloader()
+
+    model.train()
+    for i, (X, T) in enumerate(dataloader):
+        Y = model(X.to(device))
+        loss = criterion(Y, T.to(device))
+        loss.backward()
+
+        is_rigl_step = True
+        if scheduler():
+            is_rigl_step = False
+            optimizer.step()
+
+        print('iteration: %i\trigl steps completed: %i\tis_rigl_step=%s' % (i, scheduler.rigl_steps, str(is_rigl_step)))
+        
+        # check momentum
+        for l, (w, mask) in enumerate(zip(scheduler.W, scheduler.backward_masks)):
+            param_state = optimizer.state[w]
+            assert 'momentum_buffer' in param_state
+            buf = param_state['momentum_buffer']
+            sum_zeros = torch.sum(buf[mask == 0]).item()
+            print('layer %i' % l)
+            assert sum_zeros == 0
+
+
 class TestRigLScheduler:
     def test_initial_sparsity(self):
         scheduler = get_new_scheduler()
         assert_actual_sparsity_is_valid(scheduler)
+
+    def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
+        assert_sparse_momentum_remain_zeros(True)
+
+    def test_sparse_momentum_remain_zeros_RIGL_TOPO(self):
+        assert_sparse_momentum_remain_zeros(False)
 
     def test_sparse_elements_remain_zeros_STATIC_TOPO(self):
         assert_sparse_elements_remain_zeros(True)
 
     def test_sparse_elements_remain_zeros_RIGL_TOPO(self):
         assert_sparse_elements_remain_zeros(False)
-    
