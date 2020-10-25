@@ -119,8 +119,8 @@ class RigLScheduler:
         total_params = 0
         total_nonzero = 0
 
-        for N, S, mask in zip(self.N, self.S, self.backward_masks):
-            actual_S = torch.sum(mask == 0).item()
+        for N, S, mask, W in zip(self.N, self.S, self.backward_masks, self.W):
+            actual_S = torch.sum(W[mask == 0] == 0).item()
             N_str += ('%i/%i, ' % (N-actual_S, N))
             sp_p = float(N-actual_S) / float(N) * 100
             S_str += '%.2f%%, ' % sp_p
