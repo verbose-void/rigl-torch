@@ -90,6 +90,7 @@ default_hosts = os.environ.get('SM_HOSTS', None)
 if default_hosts is None:
     default_world_size = -1
 else:
+    default_hosts = json.loads(default_hosts)
     default_world_size = len(default_hosts)
 parser.add_argument('--hosts', type=list, default=default_hosts)
 parser.add_argument('--current-host', type=str, default=os.environ.get('SM_CURRENT_HOST', None))
