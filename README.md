@@ -10,12 +10,16 @@ You only need to add ***2 lines of code*** to your PyTorch project to use RigL t
 - View the TensorFlow implementation (also the original) [here](https://github.com/google-research/rigl)!
 - Additionally, it is also implemented in [vanilla python](https://evcu.github.io/ml/sparse-micrograd/) and [graphcore](https://github.com/graphcore/examples/tree/master/applications/tensorflow/dynamic_sparsity/mnist_rigl).
 
+## Setup:
+- Clone this repository: `git clone https://github.com/McCrearyD/rigl-torch`
+- Cd into repo: `cd rigl-torch`
+- Install dependencies: `pip install -r requirements.txt`
+- Install package (`-e` allows for modifications): `pip install -e .`
+
 ## Usage:
-- You can run the unit tests by cloning this repo, then typing in the terminal: `cd rigl-torch`, then `pip install -e .`, and finally `pytest`.
+- Run the tests by doing `cd rigl-torch`, then `pytest`.
 - I have provided an imagenet training script that was slightly modified to add RigL's functionality. It adds a few parser statements, and only 2 required lines of RigL code usage to work! View the original training script [here](https://github.com/pytorch/examples/tree/master/imagenet) and the RigL version [here](https://github.com/McCrearyD/rigl-pytorch/blob/master/train_imagenet_rigl.py). :) You can run by calling `python train_imagenet_rigl.py [fill in arguments]`, or check out the **[sagemaker example notebook](https://github.com/McCrearyD/rigl-pytorch/blob/master/sagemaker/rigl.ipynb)** to handle everything for you! *Isn't that easy?!*
-
 - You can use the pruning power of RigL by adding 2 lines of code to **your already existing training script**! Here is how:
-
 ```python
 from rigl_torch.RigL import RigLScheduler
 
