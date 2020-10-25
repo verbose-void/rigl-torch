@@ -1,4 +1,5 @@
 # rigl-torch
+![PyTest](https://github.com/McCrearyD/rigl-torch/workflows/PyTest/badge.svg)
 
 ## Warning: This repository is still in active development, results are not yet up to the rigl paper spec. Coming soon!
 
