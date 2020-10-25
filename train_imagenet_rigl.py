@@ -86,19 +86,26 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--pretrained', dest='pretrained', action='store_true',
                     help='use pre-trained model')
-parser.add_argument('--world-size', default=-1, type=int,
+default_hosts = os.environ.get('SM_HOSTS', None)
+if default_hosts is None:
+    default_world_size = -1
+else:
+    default_world_size = len(default_hosts)
+parser.add_argument('--hosts', type=list, default=default_hosts)
+parser.add_argument('--current-host', type=str, default=os.environ.get('SM_CURRENT_HOST', None))
+parser.add_argument('--world-size', default=default_world_size, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
-                    help='url used to set up distributed training')
+# parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
+                    # help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
 parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
-parser.add_argument('--multiprocessing-distributed', type=int, default=0,
+parser.add_argument('--multiprocessing-distributed', type=bool, default=0,
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
@@ -132,10 +139,9 @@ def main():
         warnings.warn('You have chosen a specific GPU. This will completely '
                       'disable data parallelism.')
 
-    if args.dist_url == "env://" and args.world_size == -1:
-        args.world_size = int(os.environ["WORLD_SIZE"])
+    # if args.dist_url == "env://" and args.world_size == -1:
+        # args.world_size = int(os.environ["WORLD_SIZE"])
     
-    args.multiprocessing_distributed = args.multiprocessing_distributed != 0
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
@@ -160,17 +166,17 @@ def main_worker(gpu, ngpus_per_node, args):
         print("Use GPU: {} for training".format(args.gpu))
 
     if args.distributed:
-        if args.dist_url == "env://" and args.rank == -1:
-            hosts = json.loads(os.environ['SM_HOSTS'])
-            current_host = os.environ['SM_CURRENT_HOST']
-            args.rank = hosts.index(current_host)
-            print('DISTRIBUTED RANK: %i' % args.rank)
+        # if args.dist_url == "env://" and args.rank == -1:
+        args.rank = args.hosts.index(args.current_host)
+        print('DISTRIBUTED RANK: %i' % args.rank)
 #             args.rank = int(os.environ["RANK"])
+
         if args.multiprocessing_distributed:
             # For multiprocessing distributed training, rank needs to be the
             # global rank among all the processes
             args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
+
+        dist.init_process_group(backend=args.dist_backend, # init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
     if args.pretrained:
