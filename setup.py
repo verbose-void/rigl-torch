@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="rigl-torch",
-    version="0.1",
+    version="0.2",
     author="Dyllan McCreary",
     author_email="mccreary@dyllan.ai",
     description="Implementation of Google Research's \"RigL\" sparse model training method in PyTorch.",
