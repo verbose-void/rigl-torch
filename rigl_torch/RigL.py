@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+import torch.distributed as dist
 
 from rigl_torch.util import get_W
 
@@ -33,22 +34,36 @@ def _create_step_wrapper(scheduler, optimizer):
 
 class RigLScheduler:
 
-    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
+    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
 
         self.model = model
         self.optimizer = optimizer
-        self.W = get_W(model, ignore_linear_layers=ignore_linear_layers)
-        self.backward_masks = None
+        self.sparsity_distribution = sparsity_distribution
         self.static_topo = static_topo
+        self.ignore_linear_layers = ignore_linear_layers
+        self.backward_masks = None
+
+        assert self.sparsity_distribution in ('uniform', )
+
+        self.W, self._linear_layers_mask = get_W(model, return_linear_layers_mask=True)
 
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
 
         # define sparsity allocation
-        layers = len(self.W)
-        self.S = [1-dense_allocation] * layers # uniform sparsity
+        self.S = []
+        for i, (W, is_linear) in enumerate(zip(self.W, self._linear_layers_mask)):
+            if i == 0 and self.sparsity_distribution == 'uniform':
+                # when using uniform sparsity, the first layer is always 100% dense
+                self.S.append(0)
+            elif is_linear and self.ignore_linear_layers:
+                # if choosing to ignore linear layers, keep them 100% dense
+                self.S.append(0)
+            else:
+                self.S.append(1-dense_allocation)
+            
         self.N = [torch.numel(w) for w in self.W]
 
         # randomly sparsify model according to S
@@ -69,6 +84,11 @@ class RigLScheduler:
         # also, register backward hook so sparse elements cannot be recovered during normal training
         self.backward_hook_objects = []
         for i, w in enumerate(self.W):
+            # if sparsity is 0%, skip
+            if self.S[i] <= 0:
+                self.backward_hook_objects.append(None)
+                continue
+        
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
 
@@ -83,26 +103,28 @@ class RigLScheduler:
 
     @torch.no_grad()
     def random_sparsify(self):
+        is_dist = dist.is_initialized()
         self.backward_masks = []
         for l, w in enumerate(self.W):
+            # if sparsity is 0%, skip
+            if self.S[l] <= 0:
+                self.backward_masks.append(None)
+                continue
+
             n = self.N[l]
             s = int(self.S[l] * n)
             perm = torch.randperm(n)
             perm = perm[:s]
-            flat_mask = torch.ones(n, dtype=torch.bool, device=w.device)
+            flat_mask = torch.ones(n, device=w.device)
             flat_mask[perm] = 0
             mask = torch.reshape(flat_mask, w.shape)
+
+            if is_dist:
+                dist.broadcast(mask, 0)
+
+            mask = mask.bool()
             w *= mask
             self.backward_masks.append(mask)
-
-
-    def __call__(self):
-        self.step += 1
-        if (self.step % self.delta_T) == 0 and self.step < self.T_end: # check schedule
-            self._rigl_step()
-            self.rigl_steps += 1
-            return False
-        return True
 
 
     def __str__(self):
@@ -114,36 +136,44 @@ class RigLScheduler:
         S_str = '['
         sparsity_percentages = []
         total_params = 0
+        total_conv_params = 0
         total_nonzero = 0
+        total_conv_nonzero = 0
 
-        for N, S, mask, W in zip(self.N, self.S, self.backward_masks, self.W):
+        for N, S, mask, W, is_linear in zip(self.N, self.S, self.backward_masks, self.W, self._linear_layers_mask):
             actual_S = torch.sum(W[mask == 0] == 0).item()
             N_str += ('%i/%i, ' % (N-actual_S, N))
             sp_p = float(N-actual_S) / float(N) * 100
             S_str += '%.2f%%, ' % sp_p
-
             sparsity_percentages.append(sp_p)
             total_params += N
             total_nonzero += N-actual_S
+            if not is_linear:
+                total_conv_nonzero += N-actual_S
+                total_conv_params += N
+
         N_str = N_str[:-2] + ']'
         S_str = S_str[:-2] + ']'
         
         s += 'nonzero_params=' + N_str + ',\n'
         s += 'nonzero_percentages=' + S_str + ',\n'
         s += 'total_nonzero_params=' + ('%i/%i (%.2f%%)' % (total_nonzero, total_params, float(total_nonzero)/float(total_params)*100)) + ',\n'
+        s += 'total_CONV_nonzero_params=' + ('%i/%i (%.2f%%)' % (total_conv_nonzero, total_conv_params, float(total_conv_nonzero)/float(total_conv_params)*100)) + ',\n'
         s += 'step=' + str(self.step) + ',\n'
         s += 'num_rigl_steps=' + str(self.rigl_steps) + ',\n'
+        s += 'ignoring_linear_layers=' + str(self.ignore_linear_layers) + ',\n'
+        s += 'sparsity_distribution=' + str(self.sparsity_distribution) + ',\n'
 
         return s + ')'
 
 
-    def cosine_annealing(self):
-        return self.alpha / 2 * (1 + np.cos((self.step * np.pi) / self.T_end))
-
-
     @torch.no_grad()
     def reset_momentum(self):
-        for w, mask in zip(self.W, self.backward_masks):
+        for w, mask, s in zip(self.W, self.backward_masks, self.S):
+            # if sparsity is 0%, skip
+            if s <= 0:
+                continue
+
             param_state = self.optimizer.state[w]
             if 'momentum_buffer' in param_state:
                 # mask the momentum matrix
@@ -153,29 +183,65 @@ class RigLScheduler:
 
     @torch.no_grad()
     def apply_mask_to_weights(self):
-        for w, mask in zip(self.W, self.backward_masks):
+        for w, mask, s in zip(self.W, self.backward_masks, self.S):
+            # if sparsity is 0%, skip
+            if s <= 0:
+                continue
+                
             w *= mask
 
 
     @torch.no_grad()
     def apply_mask_to_gradients(self):
-        for w, mask in zip(self.W, self.backward_masks):
+        for w, mask, s in zip(self.W, self.backward_masks, self.S):
+            # if sparsity is 0%, skip
+            if s <= 0:
+                continue
+
             w.grad *= mask
+
+
+    def cosine_annealing(self):
+        return self.alpha / 2 * (1 + np.cos((self.step * np.pi) / self.T_end))
+
+
+    def __call__(self):
+        self.step += 1
+        if self.static_topo:
+            return True
+        if (self.step % self.delta_T) == 0 and self.step < self.T_end: # check schedule
+            self._rigl_step()
+            self.rigl_steps += 1
+            return False
+        return True
 
 
     @torch.no_grad()
     def _rigl_step(self):
-        if self.static_topo:
-            return 
-
         drop_fraction = self.cosine_annealing()
 
+        # if distributed these values will be populated
+        is_dist = dist.is_initialized()
+        world_size = dist.get_world_size() if is_dist else None
+
         for l, w in enumerate(self.W):
+            # if sparsity is 0%, skip
+            if self.S[l] <= 0:
+                continue
+
             current_mask = self.backward_masks[l]
 
             # calculate raw scores
             score_drop = torch.abs(w)
             score_grow = torch.abs(self.backward_hook_objects[l].dense_grad)
+
+            # if is distributed, synchronize scores
+            if is_dist:
+                dist.all_reduce(score_drop)  # get the sum of all drop scores
+                score_drop /= world_size     # divide by world size (average the drop scores)
+
+                dist.all_reduce(score_grow)  # get the sum of all grow scores
+                score_grow /= world_size     # divide by world size (average the grow scores)
 
             # calculate drop/grow quantities
             n_total = self.N[l]
