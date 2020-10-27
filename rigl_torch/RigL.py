@@ -19,7 +19,16 @@ class IndexMaskHook:
     @torch.no_grad()
     def __call__(self, grad):
         mask = self.scheduler.backward_masks[self.layer]
-        self.dense_grad = grad.clone()
+
+        # only calculate dense_grads when necessary
+        if self.scheduler.check_if_backward_hook_should_accumulate_grad():
+            if self.dense_grad is None:
+                # initialize as all 0s so we can do a rolling average
+                self.dense_grad = torch.zeros_like(grad)
+            self.dense_grad += grad / self.scheduler.grad_accumulation_n
+        else:
+            self.dense_grad = None
+
         return grad * mask
 
 
@@ -34,7 +43,7 @@ def _create_step_wrapper(scheduler, optimizer):
 
 class RigLScheduler:
 
-    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False):
+    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False, grad_accumulation_n=1):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
 
@@ -42,9 +51,11 @@ class RigLScheduler:
         self.optimizer = optimizer
         self.sparsity_distribution = sparsity_distribution
         self.static_topo = static_topo
+        self.grad_accumulation_n = grad_accumulation_n
         self.ignore_linear_layers = ignore_linear_layers
         self.backward_masks = None
 
+        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
         assert self.sparsity_distribution in ('uniform', )
 
         self.W, self._linear_layers_mask = get_W(model, return_linear_layers_mask=True)
@@ -199,6 +210,19 @@ class RigLScheduler:
                 continue
 
             w.grad *= mask
+
+    
+    def check_if_backward_hook_should_accumulate_grad(self):
+        """
+        Used by the backward hooks. Basically just checks how far away the next rigl step is, 
+        if it's within `self.grad_accumulation_n` steps, return True.
+        """
+
+        if self.step >= self.T_end:
+            return False
+
+        steps_til_next_rigl_step = self.delta_T - (self.step % self.delta_T)
+        return steps_til_next_rigl_step <= self.grad_accumulation_n
 
 
     def cosine_annealing(self):
