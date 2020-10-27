@@ -51,6 +51,8 @@ parser.add_argument('--dense-allocation', default=None, type=float,
                     help='percentage of dense parameters allowed. if None, pruning will not be used. must be on the interval (0, 1]')
 parser.add_argument('--delta', default=100, type=int,
                     help='delta param for pruning')
+parser.add_argument('--grad-accumulation-n', default=1, type=int,
+                    help='number of gradients to accumulate before scoring for rigl')
 parser.add_argument('--alpha', default=0.3, type=float,
                     help='alpha param for pruning')
 parser.add_argument('--static-topo', default=0, type=int, help='if 1, use random sparsity topo and remain static')
@@ -291,7 +293,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.dense_allocation is not None:
         total_iterations = args.epochs * len(train_loader)
         T_end = int(0.75 * total_iterations) # (stop tweaking topology after 75% of training)
-        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo)
+        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo, grad_accumulation_n=args.grad_accumulation_n)
         print('pruning with dense allocation: %f & T_end=%i' % (args.dense_allocation, T_end))
         print(pruner)
 
