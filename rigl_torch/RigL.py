@@ -218,11 +218,11 @@ class RigLScheduler:
         if it's within `self.grad_accumulation_n` steps, return True.
         """
 
-        if self.step <= 1:
-            return True
+        if self.step >= self.T_end:
+            return False
 
-        steps_til_next_rigl_step = (self.delta_T - (self.step % self.delta_T)) % self.delta_T
-        return steps_til_next_rigl_step < self.grad_accumulation_n
+        steps_til_next_rigl_step = self.delta_T - (self.step % self.delta_T)
+        return steps_til_next_rigl_step <= self.grad_accumulation_n
 
 
     def cosine_annealing(self):
