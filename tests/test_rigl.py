@@ -15,9 +15,9 @@ device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 arch = 'resnet50'
 image_dimensionality = (3, 224, 224)
 num_classes = 1000
-max_iters = 6
+max_iters = 15
 T_end = int(max_iters * 0.75)
-delta = 2
+delta = 3
 dense_allocation = 0.1
 criterion = torch.nn.functional.cross_entropy
 
