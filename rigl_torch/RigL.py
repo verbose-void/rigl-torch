@@ -218,6 +218,9 @@ class RigLScheduler:
         if it's within `self.grad_accumulation_n` steps, return True.
         """
 
+        if self.step <= 1:
+            return True
+
         steps_til_next_rigl_step = (self.delta_T - (self.step % self.delta_T)) % self.delta_T
         return steps_til_next_rigl_step < self.grad_accumulation_n
 
