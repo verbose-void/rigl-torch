@@ -42,6 +42,7 @@ parser.add_argument('--data', metavar='DIR', default=default_data_dir,
                     help='path to dataset')
 parser.add_argument('--run-extract-script', default=0, type=int, help='if 1, run the extract.sh file (used for sagemaker example + s3 bucket containing 1000 .tar files.')
 parser.add_argument('--output-dir', default=None)
+parser.add_argument('--checkpoint-dir', default=None)
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -228,7 +229,10 @@ def main_worker(gpu, ngpus_per_node, args):
                                 weight_decay=args.weight_decay)
 
     # optionally resume from a checkpoint
-    if args.resume:
+    if args.resume or args.checkpoint_dir is not None:
+        if args.checkpoint_dir is not None:
+            args.resume = os.path.join(args.checkpoint_dir, 'checkpoint.pth.tar')
+        
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             if args.gpu is None:
@@ -314,6 +318,16 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
+            
+            if not is_best and args.checkpoint_dir is not None:
+                save_checkpoint({
+                    'epoch': epoch + 1,
+                    'arch': args.arch,
+                    'state_dict': model.state_dict(),
+                    'best_acc1': best_acc1,
+                    'optimizer' : optimizer.state_dict(),
+                }, is_best, parent_dir=args.checkpoint_dir)
+            
             save_checkpoint({
                 'epoch': epoch + 1,
                 'arch': args.arch,
