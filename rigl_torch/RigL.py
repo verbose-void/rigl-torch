@@ -43,54 +43,54 @@ def _create_step_wrapper(scheduler, optimizer):
 
 class RigLScheduler:
 
-    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, is_already_sparsified=False, delta=100, alpha=0.3, static_topo=False, grad_accumulation_n=1):
+    def __init__(self, model, optimizer, dense_allocation=1, T_end=None, sparsity_distribution='uniform', ignore_linear_layers=True, delta=100, alpha=0.3, static_topo=False, grad_accumulation_n=1, state_dict=None):
         if dense_allocation <= 0 or dense_allocation > 1:
             raise Exception('Dense allocation must be on the interval (0, 1]. Got: %f' % dense_allocation)
 
         self.model = model
         self.optimizer = optimizer
-        self.sparsity_distribution = sparsity_distribution
-        self.static_topo = static_topo
-        self.grad_accumulation_n = grad_accumulation_n
-        self.ignore_linear_layers = ignore_linear_layers
-        self.backward_masks = None
-
-        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in ('uniform', )
 
         self.W, self._linear_layers_mask = get_W(model, return_linear_layers_mask=True)
 
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
-
-        # define sparsity allocation
-        self.S = []
-        for i, (W, is_linear) in enumerate(zip(self.W, self._linear_layers_mask)):
-            if i == 0 and self.sparsity_distribution == 'uniform':
-                # when using uniform sparsity, the first layer is always 100% dense
-                self.S.append(0)
-            elif is_linear and self.ignore_linear_layers:
-                # if choosing to ignore linear layers, keep them 100% dense
-                self.S.append(0)
-            else:
-                self.S.append(1-dense_allocation)
             
         self.N = [torch.numel(w) for w in self.W]
 
-        # randomly sparsify model according to S
-        if is_already_sparsified:
-            raise Exception('TODO')
+        if state_dict is not None:
+            self.load_state_dict(state_dict)
+            self.apply_mask_to_weights()
 
-            # get zeros masks
-            self.backward_masks = []
-            for l, w in enumerate(self.W):
-                flat_w = w.view(-1)
-                mask = torch.abs(flat_w) == 0
-                indices = torch.arange(len(flat_w))
-                mask = indices[mask]
-                self.backward_masks.append(mask)
         else:
+            self.sparsity_distribution = sparsity_distribution
+            self.static_topo = static_topo
+            self.grad_accumulation_n = grad_accumulation_n
+            self.ignore_linear_layers = ignore_linear_layers
+            self.backward_masks = None
+
+            # define sparsity allocation
+            self.S = []
+            for i, (W, is_linear) in enumerate(zip(self.W, self._linear_layers_mask)):
+                if i == 0 and self.sparsity_distribution == 'uniform':
+                    # when using uniform sparsity, the first layer is always 100% dense
+                    self.S.append(0)
+                elif is_linear and self.ignore_linear_layers:
+                    # if choosing to ignore linear layers, keep them 100% dense
+                    self.S.append(0)
+                else:
+                    self.S.append(1-dense_allocation)
+
+            # randomly sparsify model according to S
             self.random_sparsify()
+
+            # scheduler keeps a log of how many times it's called. this is how it does its scheduling
+            self.step = 0
+            self.rigl_steps = 0
+
+            # define the actual schedule
+            self.delta_T = delta
+            self.alpha = alpha
+            self.T_end = T_end
 
         # also, register backward hook so sparse elements cannot be recovered during normal training
         self.backward_hook_objects = []
@@ -99,18 +99,47 @@ class RigLScheduler:
             if self.S[i] <= 0:
                 self.backward_hook_objects.append(None)
                 continue
+
+            if getattr(w, '_has_rigl_backward_hook', False):
+                raise Exception('This model already has been registered to a RigLScheduler.')
         
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
+            setattr(w, '_has_rigl_backward_hook', True)
 
-        # scheduler keeps a log of how many times it's called. this is how it does its scheduling
-        self.step = 0
-        self.rigl_steps = 0
+        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
+        assert self.sparsity_distribution in ('uniform', )
 
-        # define the actual schedule
-        self.delta_T = delta
-        self.alpha = alpha
-        self.T_end = T_end
+
+
+
+    def state_dict(self):
+        obj = {
+            'S': self.S,
+            'N': self.N,
+            'hyperparams': {
+                'delta_T': self.delta_T,
+                'alpha': self.alpha,
+                'T_end': self.T_end,
+                'ignore_linear_layers': self.ignore_linear_layers,
+                'static_topo': self.static_topo,
+                'sparsity_distribution': self.sparsity_distribution,
+                'grad_accumulation_n': self.grad_accumulation_n,
+            },
+            'step': self.step,
+            'rigl_steps': self.rigl_steps,
+            'backward_masks': self.backward_masks,
+            '_linear_layers_mask': self._linear_layers_mask,
+        }
+
+        return obj
+
+    def load_state_dict(self, state_dict):
+        for k, v in state_dict.items():
+            if type(v) == dict:
+                self.load_state_dict(v)
+            setattr(self, k, v)
+
 
     @torch.no_grad()
     def random_sparsify(self):
