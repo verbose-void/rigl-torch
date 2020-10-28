@@ -1,10 +1,12 @@
 import os
+from copy import deepcopy
 
 import torch
 import torch.multiprocessing as mp
 import torch.distributed as dist
 
 from rigl_torch.RigL import RigLScheduler
+from rigl_torch.util import get_W
 
 
 # set up environment
@@ -30,14 +32,16 @@ def get_dummy_dataloader():
     return dataloader
 
 
-def get_new_scheduler(static_topo=False, use_ddp=False):
-    model = torch.hub.load('pytorch/vision:v0.6.0', arch, pretrained=False).to(device)
+def get_new_scheduler(static_topo=False, use_ddp=False, state_dict=None, model=None):
+    if model is None:
+        model = torch.hub.load('pytorch/vision:v0.6.0', arch, pretrained=False).to(device)
+
     if use_ddp:
         model = torch.nn.parallel.DistributedDataParallel(model)
     elif torch.cuda.is_available() and torch.cuda.device_count() > 1:
         model = torch.nn.DataParallel(model)
     optimizer = torch.optim.SGD(model.parameters(), 0.1, momentum=0.9)
-    scheduler = RigLScheduler(model, optimizer, dense_allocation=dense_allocation, T_end=T_end, delta=delta, static_topo=static_topo)
+    scheduler = RigLScheduler(model, optimizer, dense_allocation=dense_allocation, T_end=T_end, delta=delta, static_topo=static_topo, state_dict=state_dict)
     print(model)
     print(scheduler)
     return scheduler
@@ -62,12 +66,14 @@ def assert_actual_sparsity_is_valid(scheduler, verbose=False):
         assert sum_of_zeros == 0
 
 
-def assert_sparse_elements_remain_zeros(static_topo, use_ddp=False, verbose=False):
-    scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
+def assert_sparse_elements_remain_zeros(static_topo, use_ddp=False, verbose=False, scheduler=None):
+    if scheduler is None:
+        scheduler = get_new_scheduler(static_topo, use_ddp=use_ddp)
+
     model = scheduler.model
     optimizer = scheduler.optimizer
-    dataloader = get_dummy_dataloader()
 
+    dataloader = get_dummy_dataloader()
     model.train()
     for i, (X, T) in enumerate(dataloader):
         Y = model(X.to(device))
@@ -142,10 +148,34 @@ def assert_sparse_gradients_remain_zeros(static_topo, use_ddp=False):
             assert sum_zeros == 0
 
 
+checkpoint_fn = 'test_checkpoint'
 class TestRigLScheduler:
     def test_initial_sparsity(self):
         scheduler = get_new_scheduler()
         assert_actual_sparsity_is_valid(scheduler)
+
+    def test_checkpoint_saving(self):
+        scheduler = get_new_scheduler()
+        torch.save({
+            'scheduler': scheduler.state_dict(),
+            'model': scheduler.model,
+        }, checkpoint_fn)
+
+    def test_checkpoint_loading(self):
+        ckpt = torch.load(checkpoint_fn)
+        scheduler_state_dict = ckpt['scheduler']
+        model = ckpt['model']
+        original_model = deepcopy(model)
+        scheduler = get_new_scheduler(state_dict=scheduler_state_dict, model=model)
+        os.remove(checkpoint_fn)
+
+        # first make sure the original model is the same as the loaded one
+        original_W = get_W(original_model)
+        assert len(original_W) == len(scheduler.W)
+        for oW, nW in zip(original_W, scheduler.W):
+            assert torch.equal(oW, nW)
+
+        assert_sparse_elements_remain_zeros(False, scheduler=scheduler)
 
     def test_sparse_momentum_remain_zeros_STATIC_TOPO(self):
         assert_sparse_momentum_remain_zeros(True)
