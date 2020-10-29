@@ -24,7 +24,9 @@ You only need to add ***2 lines of code*** to your PyTorch project to use RigL t
 #### Results:
 - Setting the `gradient_accumulation_n` to a value > 1 increases performance on ImageNet by about 0.3-1% when using a batch size of 1024. In order to get the best results from batch size 1024 (for ImageNet), **you should also multiply the `delta` value by 4**. This is because with a batch size of 4096, you are doing 4x less RigL steps (4096/1024 = 4) than if you used a batch size of 1024.
 
-## Setup:
+## User Setup:
+- `pip install rigl-torch`
+## Contributor Setup:
 - Clone this repository: `git clone https://github.com/McCrearyD/rigl-torch`
 - Cd into repo: `cd rigl-torch`
 - Install dependencies: `pip install -r requirements.txt`
