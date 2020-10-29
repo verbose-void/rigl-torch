@@ -22,7 +22,7 @@ You only need to add ***2 lines of code*** to your PyTorch project to use RigL t
 - If `gradient_accumulation_n` is > 1, then when RigL wants to make a topology modification it essentially takes **not only** the current batch's gradients, but also the previous `gradient_accumulation_n - 1` batch's gradients. It then averages them element-wise, and uses this new matrix to score the grow/drop perturbations.
 - **Note**: `gradient_accumulation_n` has to be within the interval \[1, `delta`). If `gradient_accumulation_n` == 1, then nothing has changed from the paper's spec. If `gradient_accumulation_n` == (`delta` - 1), RigL will score based on every single batch from the previous RigL step to the current one.
 #### Results:
-- Setting the `gradient_accumulation_n` to a value > 1 increases performance on ImageNet by about 3-6% when using a batch size of 1024. In order to get the best results from batch size 1024 (for ImageNet), **you should also multiply the `delta` value by 4**. This is because with a batch size of 4096, you are doing 4x less RigL steps (4096/1024 = 4) than if you used a batch size of 1024.
+- Setting the `gradient_accumulation_n` to a value > 1 increases performance on ImageNet by about 0.3-1% when using a batch size of 1024. In order to get the best results from batch size 1024 (for ImageNet), **you should also multiply the `delta` value by 4**. This is because with a batch size of 4096, you are doing 4x less RigL steps (4096/1024 = 4) than if you used a batch size of 1024.
 
 ## Setup:
 - Clone this repository: `git clone https://github.com/McCrearyD/rigl-torch`
