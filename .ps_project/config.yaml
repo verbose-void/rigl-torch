@@ -1,6 +1,9 @@
 version: 2
 workflows:
   experiment-workflow:
+    triggers:
+      branches:
+        only: master
     steps:
       -
         name: "rigl-mnist-grad-accumulation-1"
@@ -16,6 +19,3 @@ workflows:
           modelPath: /artifacts
           modelType: Tensorflow
           name: rigl-mnist-cli-config-yaml
-      triggers:
-        branches:
-          only: master
