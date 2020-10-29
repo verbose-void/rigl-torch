@@ -28,4 +28,4 @@ workflows:
           name: rigl-mnist-cli-config-yaml
       triggers:
         branches:
-          only: paperspace
+          only: master
