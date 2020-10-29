@@ -435,6 +435,8 @@ def validate(val_loader, model, criterion, args):
 def save_checkpoint(state, is_best, parent_dir=None, filename='checkpoint.pth.tar'):
     if parent_dir is not None:
         filename = os.path.join(parent_dir, filename)
+        if not os.path.exists(parent_dir):
+            os.makedirs(parent_dir)
     torch.save(state, filename)
     if is_best:
         filename_best = 'model_best.pth.tar'
