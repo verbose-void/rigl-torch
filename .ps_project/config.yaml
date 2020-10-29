@@ -4,7 +4,7 @@ workflows:
   rigl-mnist:
     triggers:
       branches:
-        only: paperspace
+        only: master
     steps:
       -
         name: "grad-accumulation-n-1-delta-100"
