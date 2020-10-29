@@ -1,18 +1,48 @@
 version: 2
 workflows:
-  experiment-workflow:
+
+  rigl-mnist:
     triggers:
       branches:
-        only: master
+        only: paperspace
     steps:
       -
-        name: "rigl-mnist-grad-accumulation-1"
+        name: "grad-accumulation-n-1-delta-100"
         command: experiment.run_single_node
         params:
           command: python train_mnist_rigl.py
           container: pytorch/pytorch:latest
           experimentEnv:
+            DENSE_ALLOCATION: 0.1
+            STATIC_TOPO: 0
+            DELTA: 100
+            ALPHA: 0.3
+            GRAD_ACCUMULATION_N: 1
             EPOCHS: 14
+            LR: 1.0
+            GAMMA: 0.7
+            BATCH_SIZE: 64
+            EVAL_BATCH_SIZE: 1000
+          machineType: P4000
+          modelPath: /artifacts
+          modelType: Tensorflow
+          name: rigl-mnist-cli-config-yaml
+
+      -
+        name: "grad-accumulation-n-4-delta-100"
+        command: experiment.run_single_node
+        params:
+          command: python train_mnist_rigl.py
+          container: pytorch/pytorch:latest
+          experimentEnv:
+            DENSE_ALLOCATION: 0.1
+            STATIC_TOPO: 0
+            DELTA: 100
+            ALPHA: 0.3
+            GRAD_ACCUMULATION_N: 4
+            EPOCHS: 14
+            LR: 1.0
+            GAMMA: 0.7
             BATCH_SIZE: 64
             EVAL_BATCH_SIZE: 1000
           machineType: P4000
