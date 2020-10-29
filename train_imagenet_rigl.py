@@ -229,6 +229,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                 weight_decay=args.weight_decay)
 
     # optionally resume from a checkpoint
+    pruner_state_dict = None
     if args.resume or args.checkpoint_dir is not None:
         if args.checkpoint_dir is not None:
             args.resume = os.path.join(args.checkpoint_dir, 'checkpoint.pth.tar')
@@ -243,6 +244,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 checkpoint = torch.load(args.resume, map_location=loc)
             args.start_epoch = checkpoint['epoch']
             best_acc1 = checkpoint['best_acc1']
+            pruner_state_dict = checkpoint['pruner']
             if args.gpu is not None:
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
@@ -297,7 +299,7 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.dense_allocation is not None:
         total_iterations = args.epochs * len(train_loader)
         T_end = int(0.75 * total_iterations) # (stop tweaking topology after 75% of training)
-        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo, grad_accumulation_n=args.grad_accumulation_n)
+        pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo, grad_accumulation_n=args.grad_accumulation_n, state_dict=pruner_state_dict)
         print('pruning with dense allocation: %f & T_end=%i' % (args.dense_allocation, T_end))
         print(pruner)
 
@@ -318,23 +320,17 @@ def main_worker(gpu, ngpus_per_node, args):
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
-            
-            if not is_best and args.checkpoint_dir is not None:
-                save_checkpoint({
-                    'epoch': epoch + 1,
-                    'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'best_acc1': best_acc1,
-                    'optimizer' : optimizer.state_dict(),
-                }, is_best, parent_dir=args.checkpoint_dir)
-            
-            save_checkpoint({
+            obj = {
                 'epoch': epoch + 1,
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best, parent_dir=args.output_dir)
+                'pruner': None if pruner is None else pruner.state_dict()
+            }
+            if not is_best and args.checkpoint_dir is not None:
+                save_checkpoint(obj, is_best, parent_dir=args.checkpoint_dir)
+            save_checkpoint(obj, is_best, parent_dir=args.output_dir)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args, pruner=None):
