@@ -3,8 +3,9 @@ workflows:
 
   rigl-mnist:
     triggers:
-      branches:
-        only: master
+      tags:
+        only:
+          - mnist
     steps:
       -
         name: "grad-accumulation-n-1-delta-100"
@@ -25,7 +26,6 @@ workflows:
             EVAL_BATCH_SIZE: 1000
           machineType: P4000
           modelPath: /artifacts
-
     checks:
       tensorflow:accuracy:
         aggregation: max
