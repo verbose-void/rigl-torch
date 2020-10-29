@@ -84,27 +84,31 @@ def test(model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 
+def ed(param_name, default=None):
+    return os.environ.get(param_name, default)
+
+
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--dense-allocation', default=None, type=float,
+    parser.add_argument('--dense-allocation', default=ed('DENSE_ALLOCATION'), type=float,
                         help='percentage of dense parameters allowed. if None, pruning will not be used. must be on the interval (0, 1]')
-    parser.add_argument('--delta', default=100, type=int,
+    parser.add_argument('--delta', default=ed('DELTA', 100), type=int,
                         help='delta param for pruning')
-    parser.add_argument('--grad-accumulation-n', default=1, type=int,
+    parser.add_argument('--grad-accumulation-n', default=ed('GRAD_ACCUMULATION_N', 1), type=int,
                         help='number of gradients to accumulate before scoring for rigl')
-    parser.add_argument('--alpha', default=0.3, type=float,
+    parser.add_argument('--alpha', default=ed('ALPHA', 0.3), type=float,
                         help='alpha param for pruning')
-    parser.add_argument('--static-topo', default=0, type=int, help='if 1, use random sparsity topo and remain static')
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+    parser.add_argument('--static-topo', default=ed('STATIC_TOPO', 0), type=int, help='if 1, use random sparsity topo and remain static')
+    parser.add_argument('--batch-size', type=int, default=ed('BATCH_SIZE', 64), metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=ed('TEST_BATCH_SIZE', 1000), metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=14, metavar='N',
+    parser.add_argument('--epochs', type=int, default=ed('EPOCHS', 14), metavar='N',
                         help='number of epochs to train (default: 14)')
-    parser.add_argument('--lr', type=float, default=1.0, metavar='LR',
+    parser.add_argument('--lr', type=float, default=ed('LR', 1), metavar='LR',
                         help='learning rate (default: 1.0)')
-    parser.add_argument('--gamma', type=float, default=0.7, metavar='M',
+    parser.add_argument('--gamma', type=float, default=ed('GAMMA', 0.7), metavar='M',
                         help='Learning rate step gamma (default: 0.7)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='disables CUDA training')
