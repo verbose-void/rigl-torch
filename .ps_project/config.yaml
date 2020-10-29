@@ -26,3 +26,10 @@ workflows:
           machineType: P4000
           modelPath: /artifacts
 
+    checks:
+      custom:accuracy:
+        aggregation: max
+        comment-on-pr: true
+      custom:loss:
+        aggregation: min
+        comment-on-pr: true

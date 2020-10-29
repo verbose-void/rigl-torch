@@ -66,7 +66,7 @@ def train(args, model, device, train_loader, optimizer, epoch, pruner):
                 break
 
 
-def test(model, device, test_loader):
+def test(model, device, test_loader, accuracies, losses):
     model.eval()
     test_loss = 0
     correct = 0
@@ -79,6 +79,8 @@ def test(model, device, test_loader):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
+    losses.append(test_loss)
+    accuracies.append(correct / len(test_loader.dataset))
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
@@ -164,14 +166,20 @@ def main():
         pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, alpha=args.alpha, delta=args.delta, static_topo=args.static_topo, T_end=T_end, ignore_linear_layers=False, grad_accumulation_n=args.grad_accumulation_n)
 
     print(model)
+    accuracies = []
+    losses = []
     for epoch in range(1, args.epochs + 1):
         print(pruner)
         train(args, model, device, train_loader, optimizer, epoch, pruner=pruner)
-        test(model, device, test_loader)
+        test(model, device, test_loader, accuracies, losses)
         scheduler.step()
 
     if args.save_model:
-        torch.save(model.state_dict(), "/artifacts/mnist_cnn.pt")
+        torch.save({
+            'model': model.state_dict(),
+            'accuracy': accuracies,
+            'loss': losses,
+        }, "/artifacts/mnist_cnn.pt")
 
 
 if __name__ == '__main__':
