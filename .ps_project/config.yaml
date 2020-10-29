@@ -26,15 +26,16 @@ workflows:
           machineType: P4000
           modelPath: /artifacts
           modelType: PyTorch
+      triggers:
+        branches:
+          only: paperspace
         # checks: #[optional]
         #   onnx:loss:
         #     target: "0.0..0.5"
         #     aggregate: "mean"
         #   defaults: #[optional]
         #     precision: 3
-      triggers:
-        branches:
-          only: paperspace
+
           # ignore: irrelevant-branch
         # tags:
           # only:
