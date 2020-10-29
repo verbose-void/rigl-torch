@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 
@@ -66,7 +67,7 @@ def train(args, model, device, train_loader, optimizer, epoch, pruner):
                 break
 
 
-def test(model, device, test_loader, accuracies, losses):
+def test(model, device, test_loader):
     model.eval()
     test_loss = 0
     correct = 0
@@ -79,12 +80,11 @@ def test(model, device, test_loader, accuracies, losses):
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
-    losses.append(test_loss)
-    accuracies.append(correct / len(test_loader.dataset))
 
     print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
+    return test_loss, correct / len(test_loader.dataset)
 
 
 def ed(param_name, default=None):
@@ -165,21 +165,20 @@ def main():
         T_end = int(0.75 * args.epochs * len(train_loader))
         pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, alpha=args.alpha, delta=args.delta, static_topo=args.static_topo, T_end=T_end, ignore_linear_layers=False, grad_accumulation_n=args.grad_accumulation_n)
 
+    writer = SummaryWriter()
+
     print(model)
-    accuracies = []
-    losses = []
     for epoch in range(1, args.epochs + 1):
         print(pruner)
         train(args, model, device, train_loader, optimizer, epoch, pruner=pruner)
-        test(model, device, test_loader, accuracies, losses)
+        loss, acc = test(model, device, test_loader)
         scheduler.step()
 
+        writer.add_scalar('loss', loss, epoch)
+        writer.add_scalar('accuracy', acc, epoch)
+
     if args.save_model:
-        torch.save({
-            'model': model.state_dict(),
-            'accuracy': accuracies,
-            'loss': losses,
-        }, "/artifacts/mnist_cnn.pt")
+        torch.save(model.state_dict(), "/artifacts/mnist_cnn.pt")
 
 
 if __name__ == '__main__':

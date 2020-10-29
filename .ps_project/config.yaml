@@ -27,9 +27,9 @@ workflows:
           modelPath: /artifacts
 
     checks:
-      custom:accuracy:
+      tensorflow:accuracy:
         aggregation: max
         comment-on-pr: true
-      custom:loss:
+      tensorflow:loss:
         aggregation: min
         comment-on-pr: true
