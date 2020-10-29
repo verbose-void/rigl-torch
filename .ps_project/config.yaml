@@ -40,16 +40,16 @@ workflows:
           # only:
             # - v.*
             # - latest
-  param-file-experiment-workflow:
-    steps:
-      -
-        name: "param-file-experiment"
-        command: experiment.run_single_node
-        paramsFile: .ps_project/param-file-experiment.yml
-        checks: #[optional]
-          custom:loss:
-            target: "0.0..0.5"
-            aggregate: "/mean/0"
-      triggers:
-        branches:
-          only: master
+#   param-file-experiment-workflow:
+#     steps:
+#       -
+#         name: "param-file-experiment"
+#         command: experiment.run_single_node
+#         paramsFile: .ps_project/param-file-experiment.yml
+#         checks: #[optional]
+#           custom:loss:
+#             target: "0.0..0.5"
+#             aggregate: "/mean/0"
+#       triggers:
+#         branches:
+#           only: master
