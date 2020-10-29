@@ -11,7 +11,7 @@ workflows:
         command: experiment.run_single_node
         params:
           command: python train_mnist_rigl.py
-          container: pytorch/pytorch:latest
+          container: fastdotai/fastai:latest
           experimentEnv:
             DENSE_ALLOCATION: 0.1
             STATIC_TOPO: 0
