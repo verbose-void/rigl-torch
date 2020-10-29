@@ -165,7 +165,7 @@ def main():
         T_end = int(0.75 * args.epochs * len(train_loader))
         pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, alpha=args.alpha, delta=args.delta, static_topo=args.static_topo, T_end=T_end, ignore_linear_layers=False, grad_accumulation_n=args.grad_accumulation_n)
 
-    writer = SummaryWriter(log_dir='/artifacts')
+    writer = SummaryWriter(log_dir='./graphs')
 
     print(model)
     for epoch in range(1, args.epochs + 1):
