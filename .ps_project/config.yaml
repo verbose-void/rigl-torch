@@ -26,6 +26,11 @@ workflows:
           machineType: P4000
           modelPath: /artifacts
 
+  rigl-mnist-2:
+    triggers:
+      branches:
+        only: paperspace
+    steps:
       -
         name: "grad-accumulation-n-4-delta-100"
         command: experiment.run_single_node
