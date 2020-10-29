@@ -119,7 +119,7 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
-    parser.add_argument('--save-model', action='store_true', default=False,
+    parser.add_argument('--save-model', default=1, type=bool,
                         help='For Saving the current Model')
     args = parser.parse_args()
 
@@ -171,7 +171,7 @@ def main():
         scheduler.step()
 
     if args.save_model:
-        torch.save(model.state_dict(), "mnist_cnn.pt")
+        torch.save(model.state_dict(), "/artifacts/mnist_cnn.pt")
 
 
 if __name__ == '__main__':
