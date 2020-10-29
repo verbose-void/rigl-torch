@@ -1,5 +1,6 @@
 # rigl-torch
 ![PyTest](https://github.com/McCrearyD/rigl-torch/workflows/PyTest/badge.svg)
+![Upload Python Package](https://github.com/McCrearyD/rigl-torch/workflows/Upload%20Python%20Package/badge.svg)
 
 ## Warning: This repository is still in active development, results are not yet up to the rigl paper spec. Coming soon!
 
