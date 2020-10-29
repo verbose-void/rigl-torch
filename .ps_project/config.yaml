@@ -9,7 +9,6 @@ workflows:
         name: "rigl-mnist-grad-accumulation-1"
         command: experiment.run_single_node
         params:
-          name: rigl-mnist-cli-config-yaml
           command: python train_mnist_rigl.py
           container: pytorch/pytorch:latest
           experimentEnv:
@@ -25,31 +24,8 @@ workflows:
             EVAL_BATCH_SIZE: 1000
           machineType: P4000
           modelPath: /artifacts
-          modelType: PyTorch
-        # checks: #[optional]
-        #   onnx:loss:
-        #     target: "0.0..0.5"
-        #     aggregate: "mean"
-        #   defaults: #[optional]
-        #     precision: 3
+          modelType: Tensorflow
+          name: rigl-mnist-cli-config-yaml
       triggers:
         branches:
           only: paperspace
-          # ignore: irrelevant-branch
-        # tags:
-          # only:
-            # - v.*
-            # - latest
-#   param-file-experiment-workflow:
-#     steps:
-#       -
-#         name: "param-file-experiment"
-#         command: experiment.run_single_node
-#         paramsFile: .ps_project/param-file-experiment.yml
-#         checks: #[optional]
-#           custom:loss:
-#             target: "0.0..0.5"
-#             aggregate: "/mean/0"
-#       triggers:
-#         branches:
-#           only: master
