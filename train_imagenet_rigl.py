@@ -61,6 +61,8 @@ parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=90, type=int, metavar='N',
                     help='number of total epochs to run')
+parser.add_argument('--T-end-epochs', default=None, type=float, metavar='N',
+                    help='percentage of total samples to stop rigl topo updates')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=512, type=int,
@@ -298,7 +300,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
     pruner = None
     if args.dense_allocation is not None:
-        total_iterations = args.epochs * len(train_loader)
+        if args.T_end_epochs is None:
+            args.T_end_epochs = args.epochs
+        total_iterations = args.T_end_epochs * len(train_loader)
         T_end = int(0.75 * total_iterations) # (stop tweaking topology after 75% of training)
         pruner = RigLScheduler(model, optimizer, dense_allocation=args.dense_allocation, T_end=T_end, delta=args.delta, alpha=args.alpha, static_topo=args.static_topo, grad_accumulation_n=args.grad_accumulation_n, state_dict=pruner_state_dict)
         print('pruning with dense allocation: %f & T_end=%i' % (args.dense_allocation, T_end))
