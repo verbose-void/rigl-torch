@@ -29,6 +29,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from rigl_torch.RigL import RigLScheduler
+from torchlars import LARS
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -65,14 +66,15 @@ parser.add_argument('--T-end-epochs', default=None, type=float, metavar='N',
                     help='percentage of total samples to stop rigl topo updates')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=512, type=int,
+parser.add_argument('-b', '--batch-size', default=256, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
                          'using Data Parallel or Distributed Data Parallel')
-parser.add_argument('--eval-batch-size', default=1024, type=int)
+parser.add_argument('--eval-batch-size', default=512, type=int)
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
+parser.add_argument('--use-LARS', default=1, type=int, help='if 1, use LARS to handle learning rate.')
 parser.add_argument('--lr-warmup-end', default=None, type=int,
                     metavar='LR_WARMUP_END', help='If not None, use linear warmup\
                                                up to the provided integer value')
@@ -230,6 +232,9 @@ def main_worker(gpu, ngpus_per_node, args):
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
+    if args.use_LARS:
+        optimizer = LARS(optimizer)
+    
 
     # optionally resume from a checkpoint
     pruner_state_dict = None
@@ -492,6 +497,9 @@ class ProgressMeter(object):
 
 
 def adjust_learning_rate(optimizer, epoch, args):
+    if args.use_LARS:
+        return # let LARS handle scaling
+    
     if args.lr_scaling_stop is not None and epoch > args.lr_scaling_stop:
         return # stop scaling learning rate
     
