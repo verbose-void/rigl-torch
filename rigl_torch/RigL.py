@@ -5,6 +5,7 @@ import torch
 import torch.distributed as dist
 
 from rigl_torch.util import get_W
+from torchlars import LARS
 
 
 class IndexMaskHook:
@@ -209,12 +210,16 @@ class RigLScheduler:
 
     @torch.no_grad()
     def reset_momentum(self):
+        opt = self.optimizer
+        if type(self.optimizer) == LARS:
+            opt = self.optimizer.optim
+        
         for w, mask, s in zip(self.W, self.backward_masks, self.S):
             # if sparsity is 0%, skip
             if s <= 0:
                 continue
-
-            param_state = self.optimizer.state[w]
+                
+            param_state = opt.state[w]
             if 'momentum_buffer' in param_state:
                 # mask the momentum matrix
                 buf = param_state['momentum_buffer']

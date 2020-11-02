@@ -3,3 +3,4 @@ torchvision
 numpy
 pytest
 tensorboard
+torchlars
