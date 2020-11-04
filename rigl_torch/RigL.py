@@ -55,6 +55,7 @@ class RigLScheduler:
         # modify optimizer.step() function to call "reset_momentum" after
         _create_step_wrapper(self, optimizer)
             
+        self.dense_allocation = dense_allocation
         self.N = [torch.numel(w) for w in self.W]
 
         if state_dict is not None:
@@ -71,12 +72,16 @@ class RigLScheduler:
             # define sparsity allocation
             self.S = []
             for i, (W, is_linear) in enumerate(zip(self.W, self._linear_layers_mask)):
-                if i == 0 and self.sparsity_distribution == 'uniform':
-                    # when using uniform sparsity, the first layer is always 100% dense
+                # when using uniform sparsity, the first layer is always 100% dense
+                # UNLESS there is only 1 layer
+                is_first_layer = i == 0
+                if is_first_layer and self.sparsity_distribution == 'uniform' and len(self.W) > 1:
                     self.S.append(0)
+
                 elif is_linear and self.ignore_linear_layers:
                     # if choosing to ignore linear layers, keep them 100% dense
                     self.S.append(0)
+
                 else:
                     self.S.append(1-dense_allocation)
 
@@ -115,6 +120,7 @@ class RigLScheduler:
 
     def state_dict(self):
         obj = {
+            'dense_allocation': self.dense_allocation,
             'S': self.S,
             'N': self.N,
             'hyperparams': {
