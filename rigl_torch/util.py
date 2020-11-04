@@ -3,7 +3,6 @@ import torchvision
 
 
 def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
-    print(i)
     if layers is None:
         layers = []
     if linear_layers_mask is None:
