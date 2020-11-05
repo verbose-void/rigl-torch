@@ -8,6 +8,13 @@ An open source implementation of Google Research's paper (Authored by [Utku Evci
 
 You only need to add ***2 lines of code*** to your PyTorch project to use RigL to train your model with sparsity!
 
+## ImageNet Results
+Results aren't quite as complete as the original paper, however **this implementation outperforms the original by 1%**!
+
+| Architecture | Sparsity % | S. Distribution | Top-1 | [Original](https://github.com/google-research/rigl) Top-1 |
+| :------------- | :----------: | :-----------: | :-----------: | -----------: |
+|  ResNet50 | 90%   | Uniform   | 73%    | 72%    |
+
 ## Other Implementations:
 - View the TensorFlow implementation (also the original) [here](https://github.com/google-research/rigl)!
 - Additionally, it is also implemented in [vanilla python](https://evcu.github.io/ml/sparse-micrograd/) and [graphcore](https://github.com/graphcore/examples/tree/master/applications/tensorflow/dynamic_sparsity/mnist_rigl).
