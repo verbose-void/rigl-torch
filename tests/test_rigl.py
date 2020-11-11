@@ -24,6 +24,16 @@ dense_allocation = 0.1
 criterion = torch.nn.functional.cross_entropy
 
 
+def test_lengths_of_W():
+    resnet18 = torch.hub.load('pytorch/vision:v0.6.0', 'resnet18', pretrained=False)
+    resnet18_W = get_W(resnet18)
+    assert len(resnet18_W) == 21, 'resnet18 should have 21 "weight" matrices'
+
+    resnet50 = torch.hub.load('pytorch/vision:v0.6.0', 'resnet50', pretrained=False)
+    resnet50_W = get_W(resnet50)
+    assert len(resnet50_W) == 54, 'resnet50 should have 54 "weight" matrices'
+
+
 def get_dummy_dataloader():
     X = torch.rand((max_iters, *image_dimensionality))
     T = (torch.rand(max_iters) * num_classes).long()

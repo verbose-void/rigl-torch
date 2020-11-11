@@ -2,6 +2,9 @@ import torch
 import torchvision
 
 
+EXCLUDED_TYPES = (torch.nn.BatchNorm2d, )
+
+
 def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
     if layers is None:
         layers = []
@@ -16,17 +19,8 @@ def get_weighted_layers(model, i=0, layers=None, linear_layers_mask=None):
         if isinstance(p, torch.nn.Linear):
             layers.append([p])
             linear_layers_mask.append(1)
-        elif hasattr(p, 'weight'):
+        elif hasattr(p, 'weight') and type(p) not in EXCLUDED_TYPES:
             layers.append([p])
-            linear_layers_mask.append(0)
-        elif isinstance(p, torch.nn.BatchNorm2d):
-            layers[-1].append(p)
-        elif isinstance(p, torch.nn.ReLU):
-            layers[-1].append(p)
-        elif isinstance(p, torch.nn.MaxPool2d) or isinstance(p, torch.nn.AdaptiveAvgPool2d):
-            layers[-1].append(p)
-        elif layer_name == 'downsample':
-            layers.append(p)
             linear_layers_mask.append(0)
         elif isinstance(p, torchvision.models.resnet.Bottleneck) or isinstance(p, torchvision.models.resnet.BasicBlock):
             _, linear_layers_mask, i = get_weighted_layers(p, i=i + 1, layers=layers, linear_layers_mask=linear_layers_mask)
