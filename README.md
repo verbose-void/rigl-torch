@@ -9,11 +9,12 @@ An open source implementation of Google Research's paper (Authored by [Utku Evci
 You only need to add ***2 lines of code*** to your PyTorch project to use RigL to train your model with sparsity!
 
 ## ImageNet Results
-Results aren't quite as complete as the original paper, however **this implementation outperforms the original by 1%**!
+Results aren't quite as complete as the original paper, but if you end up running on ImageNet with different configurations and/or different datasets, I would love to include them in the repo here!
 
-| Architecture | Sparsity % | S. Distribution | Top-1 | [Original](https://github.com/google-research/rigl) Top-1 |
-| :------------- | :----------: | :-----------: | :-----------: | -----------: |
-|  ResNet50 | 90%   | Uniform   | 73%    | 72%    |
+### RigL-1x:
+| Architecture | Sparsity % | S. Distribution | Top-1 | [Original](https://github.com/google-research/rigl) Top-1 | Model/Ckpt |
+| :------------- | :----------: | :-----------: | :-----------: | :-----------: | -----------: |
+|  ResNet50 | 90%   | Uniform   | 72.4%    | 72%    | [Link](https://drive.google.com/file/d/1mzrS-V9RW6c2o3yj4N1BBp7Kp3z-Cjk8/view?usp=sharing) |
 
 ## Other Implementations:
 - View the TensorFlow implementation (also the original) [here](https://github.com/google-research/rigl)!
