@@ -63,11 +63,16 @@ class RigLScheduler:
             self.apply_mask_to_weights()
 
         else:
-            self.sparsity_distribution = sparsity_distribution
+            self.sparsity_distribution = sparsity_distribution.lower()
             self.static_topo = static_topo
             self.grad_accumulation_n = grad_accumulation_n
             self.ignore_linear_layers = ignore_linear_layers
             self.backward_masks = None
+
+            assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
+            assert self.sparsity_distribution in ('uniform', 'er', 'erk')
+
+            divisor = 0
 
             # define sparsity allocation
             self.S = []
@@ -81,9 +86,20 @@ class RigLScheduler:
                 elif is_linear and self.ignore_linear_layers:
                     # if choosing to ignore linear layers, keep them 100% dense
                     self.S.append(0)
+        
+                elif self.sparsity_distribution == 'er':
+                    n_in, n_out = W.shape[-2:]
+                    raw_prob = (n_in + n_out) / (n_in * n_out)
+                    divisor += raw_prob * np.prod(W.shape)
+
+                elif self.sparsity_distribution == 'erk':
+                    raw_prob = (np.sum(W.shape) / np.prod(W.shape))
+                    divisor += raw_prob * np.prod(W.shape)
 
                 else:
                     self.S.append(1-dense_allocation)
+
+            assert False
 
             # randomly sparsify model according to S
             self.random_sparsify()
@@ -111,11 +127,6 @@ class RigLScheduler:
             self.backward_hook_objects.append(IndexMaskHook(i, self))
             w.register_hook(self.backward_hook_objects[-1])
             setattr(w, '_has_rigl_backward_hook', True)
-
-        assert self.grad_accumulation_n > 0 and self.grad_accumulation_n < delta
-        assert self.sparsity_distribution in ('uniform', )
-
-
 
 
     def state_dict(self):
