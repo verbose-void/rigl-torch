@@ -130,3 +130,6 @@ torch.save(model.state_dict(), 'model.pth')
     note = {Reimplementation/extension of the work done by Google Research: https://github.com/google-research/rigl}
 }
 ```
+
+## Used By
+- [DCTpS Paper](https://arxiv.org/pdf/2102.07655.pdf)
