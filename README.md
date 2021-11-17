@@ -121,6 +121,12 @@ torch.save(model.state_dict(), 'model.pth')
 
 ## Citation
 ```
-@misc{mccreary_2020, title={PyTorch Implementation of Rigging the Lottery: Making All Tickets Winners}, url={https://github.com/nollied/rigl-torch}, journal={rigl-torch github}, author={McCreary, Dyllan}, year={2020}, month={Nov}}
-Reimplementation/extension of the work done by Google Research (https://github.com/google-research/rigl)
+@misc{nollied, 
+    author = {McCreary, Dyllan},
+    title = {PyTorch Implementation of Rigging the Lottery: Making All Tickets Winners}, 
+    url = {https://github.com/nollied/rigl-torch},
+    year = {2020}, 
+    month = {Nov},
+    note = {Reimplementation/extension of the work done by Google Research: https://github.com/google-research/rigl}
+}
 ```
