@@ -2,8 +2,6 @@
 ![PyTest](https://github.com/McCrearyD/rigl-torch/workflows/PyTest/badge.svg)
 ![Upload Python Package](https://github.com/McCrearyD/rigl-torch/workflows/Upload%20Python%20Package/badge.svg)
 
-## Warning: This repository is still in active development, results are not yet up to the rigl paper spec. Coming soon!
-
 An open source implementation of Google Research's paper (Authored by [Utku Evci](https://www.linkedin.com/in/utkuevci/), an AI Resident @ Google Brain):  [Rigging the Lottery: Making All Tickets Winners (RigL)](https://arxiv.org/abs/1911.11134) in PyTorch as versatile, simple, and fast as possible.
 
 You only need to add ***2 lines of code*** to your PyTorch project to use RigL to train your model with sparsity!
@@ -23,7 +21,7 @@ Results aren't quite as complete as the original paper, but if you end up runnin
 ## Contributions Beyond the Paper:
 ### Gradient Accumulation:
 #### Motivation:
-- [The paper](https://arxiv.org/abs/1911.11134) cites their experiments for ImageNet being done using a batch size of 4096, which isn't practical for everyone since to do so you need 32 Tesla V100s to store that many 224x224x3 images in VRAM.
+- [Evci et al.](https://arxiv.org/abs/1911.11134) cites their experiments for ImageNet being done using a batch size of 4096, which isn't practical for everyone since to do so you need 32 Tesla V100s to store that many 224x224x3 images in VRAM.
 - Following this, if you are using a significantly small batch size for training (ie. bs=1024 for ImageNet), RigL may perform suboptimally due to instantaneous gradient information being quite noisy. To remedy this, I have introduced a solution for "emulating" larger batch sizes for topology modifications.
 #### Method:
 - In regular dense training gradients are calculated per batch essentially averaging the loss of each sample and taking the derivative w.r.t the parameters. This means that if your batch size is 1024, the gradients are the accumulated average over 1024 data samples.
@@ -119,4 +117,10 @@ print(pruner)
 
 # save model
 torch.save(model.state_dict(), 'model.pth')
+```
+
+## Citation
+```
+@misc{mccreary_2020, title={PyTorch Implementation of Rigging the Lottery: Making All Tickets Winners}, url={https://github.com/nollied/rigl-torch}, journal={rigl-torch github}, author={McCreary, Dyllan}, year={2020}, month={Nov}}
+Reimplementation/extension of the work done by Google Research (https://github.com/google-research/rigl)
 ```
